@@ -106,10 +106,3 @@ curl -X PUT http://127.0.0.1:5000/api/foods/1 \
 ```bash
 curl -X DELETE http://127.0.0.1:5000/api/foods/1
 ```
-
-## Next steps (when you're ready)
-
-- Add a frontend (plain HTML/JS or React) that talks to this API.
-- Add authentication if you want admin-only writes.
-- Add pagination to `/api/foods` if the dataset grows large.
-- Swap SQLite for Postgres/MySQL if you outgrow a single file.
