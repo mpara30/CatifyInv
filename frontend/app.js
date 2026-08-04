@@ -258,11 +258,12 @@ function openAddModal() {
   document.getElementById("fStock").value = 0;
   modalTitle.textContent = "Add product";
   formError.classList.add("hidden");
+  document.getElementById("historySection").classList.add("hidden");
   modalBackdrop.classList.remove("hidden");
   document.getElementById("fName").focus();
 }
 
-function openEditModal(id) {
+async function openEditModal(id) {
   const p = products.find((x) => x.id === id);
   if (!p) return;
   document.getElementById("productId").value = p.id;
@@ -278,6 +279,40 @@ function openEditModal(id) {
   formError.classList.add("hidden");
   modalBackdrop.classList.remove("hidden");
   document.getElementById("fName").focus();
+
+  const historySection = document.getElementById("historySection");
+  const historyList = document.getElementById("historyList");
+  historySection.classList.remove("hidden");
+  historyList.innerHTML = `<li class="history-empty">Loading…</li>`;
+  try {
+    const history = await apiGet(`/products/${id}/history`);
+    renderHistory(history);
+  } catch (e) {
+    historyList.innerHTML = `<li class="history-empty">Couldn't load history.</li>`;
+  }
+}
+
+function renderHistory(entries) {
+  const historyList = document.getElementById("historyList");
+  if (entries.length === 0) {
+    historyList.innerHTML = `<li class="history-empty">No stock changes yet.</li>`;
+    return;
+  }
+  historyList.innerHTML = entries
+    .slice(0, 10)
+    .map((h) => {
+      const sign = h.delta > 0 ? "+" : "";
+      const cls = h.delta > 0 ? "positive" : "negative";
+      const when = new Date(h.created_at + "Z").toLocaleString(undefined, {
+        month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+      });
+      return `
+        <li class="history-row">
+          <span>${h.previous_qty} → ${h.new_qty} <span class="history-change ${cls}">(${sign}${h.delta})</span></span>
+          <span class="history-meta">${h.source} · ${when}</span>
+        </li>`;
+    })
+    .join("");
 }
 
 function closeModal() {

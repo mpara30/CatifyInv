@@ -4,11 +4,15 @@ A REST API + static frontend server for the cat food product database.
 
 Endpoints:
     GET    /api/health              health check
+    GET    /api/stats               dashboard aggregates
     GET    /api/products            list products (supports filters, see below)
     GET    /api/products/<id>       get one product
     POST   /api/products            create a product
     PUT    /api/products/<id>       update a product (partial updates allowed)
     DELETE /api/products/<id>       delete a product
+    POST   /api/products/<id>/adjust-stock   bump stock_qty by a delta
+    GET    /api/products/<id>/history        stock change history for a product
+    GET    /api/stock-history                stock change history across all products
     GET    /                        serves the frontend (frontend/index.html)
 
 Filters for GET /api/products (all optional, combine with &):
@@ -73,6 +77,22 @@ def validate_payload(data, partial=False):
             return "expiration_date must be in YYYY-MM-DD format"
 
     return None
+
+
+def log_stock_history(conn, product_id, product_name, product_brand,
+                       previous_qty, new_qty, source, skip_if_unchanged=True):
+    """Insert a stock_history row, snapshotting the product's name/brand so
+    the row stays readable even after the product itself is deleted.
+    By default, no-op edits (previous_qty == new_qty) aren't logged."""
+    if skip_if_unchanged and previous_qty == new_qty:
+        return
+    conn.execute(
+        "INSERT INTO stock_history "
+        "(product_id, product_name, product_brand, previous_qty, new_qty, delta, source) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (product_id, product_name, product_brand, previous_qty, new_qty,
+         new_qty - previous_qty, source),
+    )
 
 
 @app.route("/")
@@ -222,6 +242,10 @@ def create_product():
         cur = conn.execute(
             f"INSERT INTO products ({columns}) VALUES ({placeholders})", data
         )
+        log_stock_history(
+            conn, cur.lastrowid, data["name"], data["brand"],
+            0, data["stock_qty"], "create", skip_if_unchanged=False,
+        )
         conn.commit()
         row = conn.execute(
             f"SELECT {COLUMNS} FROM products WHERE id = ?", (cur.lastrowid,)
@@ -243,7 +267,7 @@ def update_product(product_id):
     conn = get_connection()
     try:
         existing = conn.execute(
-            "SELECT id FROM products WHERE id = ?", (product_id,)
+            "SELECT id, name, brand, stock_qty FROM products WHERE id = ?", (product_id,)
         ).fetchone()
         if existing is None:
             return jsonify(error="Not found"), 404
@@ -255,6 +279,16 @@ def update_product(product_id):
             f"WHERE id = :id",
             data,
         )
+
+        if "stock_qty" in data:
+            # Use the post-edit name/brand if those were changed in this same request.
+            snap_name = data.get("name", existing["name"])
+            snap_brand = data.get("brand", existing["brand"])
+            log_stock_history(
+                conn, product_id, snap_name, snap_brand,
+                existing["stock_qty"], data["stock_qty"], "edit",
+            )
+
         conn.commit()
         row = conn.execute(
             f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)
@@ -276,7 +310,7 @@ def adjust_stock(product_id):
     conn = get_connection()
     try:
         row = conn.execute(
-            "SELECT stock_qty FROM products WHERE id = ?", (product_id,)
+            "SELECT name, brand, stock_qty FROM products WHERE id = ?", (product_id,)
         ).fetchone()
         if row is None:
             return jsonify(error="Not found"), 404
@@ -285,6 +319,10 @@ def adjust_stock(product_id):
         conn.execute(
             "UPDATE products SET stock_qty = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (new_qty, product_id),
+        )
+        log_stock_history(
+            conn, product_id, row["name"], row["brand"],
+            row["stock_qty"], new_qty, "adjust",
         )
         conn.commit()
         updated = conn.execute(
@@ -295,8 +333,59 @@ def adjust_stock(product_id):
         conn.close()
 
 
-@app.route("/api/products/<int:product_id>", methods=["DELETE"])
-def delete_product(product_id):
+@app.route("/history")
+def history_page():
+    return app.send_static_file("history.html")
+
+
+@app.route("/api/stock-history", methods=["GET"])
+def all_stock_history():
+    """Stock change history across all products (including deleted ones),
+    most recent first.
+
+    Optional filters:
+        q          search by product name or brand
+        source     'create' | 'edit' | 'adjust' | 'delete'
+        limit      max rows to return (default 200)
+    """
+    args = request.args
+    clauses = []
+    params = []
+
+    if args.get("q"):
+        clauses.append("(product_name LIKE ? OR product_brand LIKE ?)")
+        like = f"%{args['q']}%"
+        params.extend([like, like])
+
+    if args.get("source") in ("create", "edit", "adjust", "delete"):
+        clauses.append("source = ?")
+        params.append(args["source"])
+
+    limit = args.get("limit", "200")
+    try:
+        limit = max(1, min(1000, int(limit)))
+    except ValueError:
+        limit = 200
+
+    sql = (
+        "SELECT id, product_id, product_name, product_brand, "
+        "previous_qty, new_qty, delta, source, created_at FROM stock_history"
+    )
+    if clauses:
+        sql += " WHERE " + " AND ".join(clauses)
+    sql += " ORDER BY created_at DESC, id DESC LIMIT ?"
+    params.append(limit)
+
+    conn = get_connection()
+    try:
+        rows = conn.execute(sql, params).fetchall()
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
+
+
+@app.route("/api/products/<int:product_id>/history", methods=["GET"])
+def product_history(product_id):
     conn = get_connection()
     try:
         existing = conn.execute(
@@ -304,6 +393,31 @@ def delete_product(product_id):
         ).fetchone()
         if existing is None:
             return jsonify(error="Not found"), 404
+
+        rows = conn.execute(
+            "SELECT id, previous_qty, new_qty, delta, source, created_at "
+            "FROM stock_history WHERE product_id = ? ORDER BY created_at DESC, id DESC",
+            (product_id,),
+        ).fetchall()
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
+
+
+@app.route("/api/products/<int:product_id>", methods=["DELETE"])
+def delete_product(product_id):
+    conn = get_connection()
+    try:
+        existing = conn.execute(
+            "SELECT id, name, brand, stock_qty FROM products WHERE id = ?", (product_id,)
+        ).fetchone()
+        if existing is None:
+            return jsonify(error="Not found"), 404
+
+        log_stock_history(
+            conn, product_id, existing["name"], existing["brand"],
+            existing["stock_qty"], 0, "delete", skip_if_unchanged=False,
+        )
         conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
         conn.commit()
         return "", 204

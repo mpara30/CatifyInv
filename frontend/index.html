@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cat Food Inventory — Manifest</title>
+<title>CatifyInv — Manifest</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -13,7 +13,7 @@
 <header class="topbar">
   <div class="topbar-left">
     <p class="eyebrow">MANIFEST</p>
-    <h1>Cat Food Inventory</h1>
+    <h1>CatifyInv</h1>
   </div>
   <div class="topbar-stats" id="stats">
     <div class="stat">
@@ -34,6 +34,7 @@
     </div>
   </div>
   <button class="btn btn-primary" id="openAddBtn">+ Add product</button>
+  <a class="btn btn-ghost" href="/history">History</a>
 </header>
 
 <section class="toolbar">
@@ -127,6 +128,11 @@
       </div>
 
       <p class="form-error hidden" id="formError"></p>
+
+      <div id="historySection" class="history-section hidden">
+        <p class="history-title">Recent stock changes</p>
+        <ul class="history-list" id="historyList"></ul>
+      </div>
 
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>

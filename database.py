@@ -21,6 +21,20 @@ CREATE TABLE IF NOT EXISTS products (
     created_at          TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at          TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS stock_history (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id          INTEGER,                -- not a FK on purpose: rows must survive product deletion
+    product_name        TEXT NOT NULL,           -- snapshot at the time of the event
+    product_brand       TEXT NOT NULL,           -- snapshot at the time of the event
+    previous_qty        INTEGER NOT NULL,
+    new_qty             INTEGER NOT NULL,
+    delta               INTEGER NOT NULL,
+    source              TEXT NOT NULL CHECK (source IN ('create', 'edit', 'adjust', 'delete')),
+    created_at          TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_history_product_id ON stock_history(product_id);
 """
 
 

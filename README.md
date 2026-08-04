@@ -1,4 +1,4 @@
-# Cat Food Inventory
+# CatifyInv
 
 A small inventory management app for cat food products: a Flask +
 SQLite REST API, and a vanilla HTML/CSS/JS frontend served directly
@@ -55,6 +55,7 @@ Each product has:
 - **Browse & filter** — search box, category/flavour/stock filters, sorting
 - **Add / edit / delete** — modal form with validation
 - **Quick stock adjust** — `+`/`–` buttons on each card, no need to open the edit form
+- **Stock change history** — every product lifecycle event is logged: creation, manual edits to stock, quick +/- adjustments, and deletion. The edit modal shows the last 10 changes for that product, and a dedicated **History** page (linked from the top bar) shows a searchable, filterable ledger across the whole catalog — including deleted products, since each entry snapshots the product's name/brand at the time
 - **Dashboard stats** — total SKUs, low-stock count, expiring-soon count, total inventory value — computed server-side across the whole catalog regardless of active filters
 - Stock badges (in stock / low stock / out of stock) and expiration highlighting (upcoming vs. past)
 
@@ -70,6 +71,8 @@ Each product has:
 | PUT    | /api/products/<id>                | update a product (partial OK)          |
 | DELETE | /api/products/<id>                | delete a product                       |
 | POST   | /api/products/<id>/adjust-stock  | bump stock_qty by a delta, clamped at 0 |
+| GET    | /api/products/<id>/history        | stock change history for a product (most recent first) |
+| GET    | /api/stock-history                 | stock change history across all products, including deleted ones (filters: `q`, `source`, `limit`) |
 
 ### Filtering `GET /api/products`
 
@@ -94,11 +97,3 @@ curl -X POST http://127.0.0.1:5000/api/products/1/adjust-stock \
 Returns `total_skus`, `low_stock_count` (≤10 units, >0), `out_of_stock_count`,
 `expiring_soon_count` (within 30 days), `total_value_usd` (sum of price × stock
 across the whole catalog).
-
-## Next steps (when you're ready)
-
-- Reorder threshold per product (custom low-stock point instead of the fixed 10-unit default)
-- CSV import/export for bulk catalog management
-- Stock change history/audit log
-- Auth for admin actions if this becomes multi-user
-- Swap SQLite for Postgres/MySQL if you outgrow a single file
