@@ -1,18 +1,23 @@
-# Cat Food Database — API
+# Cat Food Inventory
 
-A small REST API for browsing and managing a database of cat foods.
-Built with **Flask** and Python's built-in **sqlite3** — no external
-database server needed.
+A small inventory management app for cat food products: a Flask +
+SQLite REST API, and a vanilla HTML/CSS/JS frontend served directly
+by Flask (no build step, no CORS setup needed — same origin).
 
 ## Project structure
 
 ```
 cat_food_db/
-├── app.py           # Flask app: all API routes
-├── database.py       # SQLite connection + schema
-├── seed.py            # Loads placeholder cat food data
+├── app.py             # Flask app: API routes + serves the frontend
+├── database.py         # SQLite connection + schema
+├── models.py            # Product dataclass + row-mapping factory
+├── seed.py               # Loads placeholder product data
 ├── requirements.txt
-├── cat_food.db        # created automatically (SQLite file)
+├── cat_food.db            # created automatically (SQLite file)
+├── frontend/
+│   ├── index.html
+│   ├── style.css
+│   └── app.js
 └── README.md
 ```
 
@@ -21,88 +26,79 @@ cat_food_db/
 ```bash
 cd cat_food_db
 pip install -r requirements.txt
-python seed.py      # creates cat_food.db and loads 6 sample entries
-python app.py        # starts the API at http://127.0.0.1:5000
+python seed.py      # creates cat_food.db and loads 7 sample products
+python app.py         # starts the app at http://127.0.0.1:5000
 ```
 
-Re-run `python seed.py` any time to reset the data back to the placeholder set.
+Open **http://127.0.0.1:5000** in a browser — that's the whole app.
+Re-run `python seed.py` any time to reset the data back to the
+placeholder set.
 
 ## Data model
 
-Each cat food entry has:
+Each product has:
 
-| Field               | Type    | Notes                                        |
-|---------------------|---------|-----------------------------------------------|
-| id                  | int     | auto-assigned                                  |
-| name                | string  | required                                       |
-| brand               | string  | required                                       |
-| food_type           | string  | required: `dry`, `wet`, `raw`, `freeze-dried`  |
-| life_stage          | string  | required: `kitten`, `adult`, `senior`, `all`   |
-| grain_free          | bool    | default `false`                                |
-| calories_per_100g   | number  |                                                 |
-| protein_percent     | number  |                                                 |
-| fat_percent         | number  |                                                 |
-| fiber_percent       | number  |                                                 |
-| moisture_percent    | number  |                                                 |
-| price_usd           | number  | per bag/can, whatever unit you choose          |
-| ingredients         | string  | free text                                      |
-| description         | string  | free text                                      |
+| Field             | Type    | Notes                                              |
+|-------------------|---------|------------------------------------------------------|
+| id                | int     | auto-assigned                                        |
+| name              | string  | required                                             |
+| brand             | string  | required                                             |
+| category          | string  | e.g. `dry`, `wet`, `treats`, `freeze-dried`          |
+| flavour           | string  | e.g. `chicken`, `salmon`                             |
+| weight            | number  | grams                                                |
+| price             | int     | **stored in cents** (API also returns `price_usd`)   |
+| stock_qty         | int     | units in stock                                       |
+| expiration_date   | string  | ISO date `YYYY-MM-DD`, nullable                     |
 
-## Endpoints
+## Frontend features
 
-| Method | Path              | Description                     |
-|--------|-------------------|----------------------------------|
-| GET    | /api/health       | health check                     |
-| GET    | /api/foods        | list foods (filters below)       |
-| GET    | /api/foods/<id>   | get one food                     |
-| POST   | /api/foods        | create a food                    |
-| PUT    | /api/foods/<id>   | update a food (partial OK)       |
-| DELETE | /api/foods/<id>   | delete a food                    |
+- **Browse & filter** — search box, category/flavour/stock filters, sorting
+- **Add / edit / delete** — modal form with validation
+- **Quick stock adjust** — `+`/`–` buttons on each card, no need to open the edit form
+- **Dashboard stats** — total SKUs, low-stock count, expiring-soon count, total inventory value — computed server-side across the whole catalog regardless of active filters
+- Stock badges (in stock / low stock / out of stock) and expiration highlighting (upcoming vs. past)
 
-### Filtering / searching `GET /api/foods`
+## API endpoints
 
-Combine any of these as query params:
+| Method | Path                             | Description                          |
+|--------|-----------------------------------|----------------------------------------|
+| GET    | /api/health                      | health check                           |
+| GET    | /api/stats                       | dashboard aggregates (see below)       |
+| GET    | /api/products                    | list products (filters below)          |
+| GET    | /api/products/<id>                | get one product                        |
+| POST   | /api/products                     | create a product                       |
+| PUT    | /api/products/<id>                | update a product (partial OK)          |
+| DELETE | /api/products/<id>                | delete a product                       |
+| POST   | /api/products/<id>/adjust-stock  | bump stock_qty by a delta, clamped at 0 |
 
-- `q=salmon` — free-text search across name, brand, ingredients, description
+### Filtering `GET /api/products`
+
+- `q=salmon` — search across name, brand, category, flavour
 - `brand=Purrfect Bowl`
-- `food_type=dry`
-- `life_stage=kitten`
-- `grain_free=true`
-- `min_protein=30`
-- `max_price=25`
-- `sort=protein_percent&order=desc`
+- `category=dry`
+- `flavour=chicken`
+- `in_stock=true` / `in_stock=false`
+- `max_price=2500` (cents)
+- `expiring_before=2026-12-31`
+- `sort=price&order=desc`
 
-Example:
-```bash
-curl "http://127.0.0.1:5000/api/foods?food_type=dry&grain_free=true&sort=protein_percent&order=desc"
-```
-
-### Creating a food
+### Adjusting stock
 
 ```bash
-curl -X POST http://127.0.0.1:5000/api/foods \
-  -H "Content-Type: application/json" \
-  -d '{
-        "name": "Ocean Whitefish Formula",
-        "brand": "Coastal Cat Co.",
-        "food_type": "dry",
-        "life_stage": "adult",
-        "grain_free": true,
-        "protein_percent": 38,
-        "price_usd": 22.50
-      }'
+curl -X POST http://127.0.0.1:5000/api/products/1/adjust-stock \
+  -H "Content-Type: application/json" -d '{"delta": -1}'
 ```
 
-### Updating a food (partial update is fine)
+### Dashboard aggregates `GET /api/stats`
 
-```bash
-curl -X PUT http://127.0.0.1:5000/api/foods/1 \
-  -H "Content-Type: application/json" \
-  -d '{"price_usd": 26.99}'
-```
+Returns `total_skus`, `low_stock_count` (≤10 units, >0), `out_of_stock_count`,
+`expiring_soon_count` (within 30 days), `total_value_usd` (sum of price × stock
+across the whole catalog).
 
-### Deleting a food
+## Next steps (when you're ready)
 
-```bash
-curl -X DELETE http://127.0.0.1:5000/api/foods/1
-```
+- Reorder threshold per product (custom low-stock point instead of the fixed 10-unit default)
+- CSV import/export for bulk catalog management
+- Stock change history/audit log
+- Auth for admin actions if this becomes multi-user
+- Swap SQLite for Postgres/MySQL if you outgrow a single file

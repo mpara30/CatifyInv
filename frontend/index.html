@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cat Food Inventory — Manifest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <p class="eyebrow">MANIFEST</p>
+    <h1>Cat Food Inventory</h1>
+  </div>
+  <div class="topbar-stats" id="stats">
+    <div class="stat">
+      <span class="stat-value" id="statTotal">–</span>
+      <span class="stat-label">SKUs</span>
+    </div>
+    <div class="stat stat-warn">
+      <span class="stat-value" id="statLow">–</span>
+      <span class="stat-label">Low stock</span>
+    </div>
+    <div class="stat stat-danger">
+      <span class="stat-value" id="statExpiring">–</span>
+      <span class="stat-label">Expiring soon</span>
+    </div>
+    <div class="stat stat-value-stat">
+      <span class="stat-value" id="statValue">–</span>
+      <span class="stat-label">Inventory value</span>
+    </div>
+  </div>
+  <button class="btn btn-primary" id="openAddBtn">+ Add product</button>
+</header>
+
+<section class="toolbar">
+  <input type="search" id="searchInput" placeholder="Search name, brand, flavour…" class="input search-input">
+
+  <select id="categoryFilter" class="input select">
+    <option value="">All categories</option>
+  </select>
+
+  <select id="flavourFilter" class="input select">
+    <option value="">All flavours</option>
+  </select>
+
+  <select id="stockFilter" class="input select">
+    <option value="">All stock</option>
+    <option value="true">In stock</option>
+    <option value="false">Out of stock</option>
+  </select>
+
+  <select id="sortSelect" class="input select">
+    <option value="name-asc">Name A–Z</option>
+    <option value="name-desc">Name Z–A</option>
+    <option value="price-asc">Price low–high</option>
+    <option value="price-desc">Price high–low</option>
+    <option value="stock_qty-asc">Stock low–high</option>
+    <option value="stock_qty-desc">Stock high–low</option>
+    <option value="expiration_date-asc">Expiring soonest</option>
+  </select>
+</section>
+
+<main>
+  <div id="emptyState" class="empty-state hidden">
+    <p class="empty-title">No products match.</p>
+    <p class="empty-sub">Try clearing a filter, or add a new product to the manifest.</p>
+  </div>
+
+  <div id="productGrid" class="product-grid"></div>
+</main>
+
+<!-- Add / Edit modal -->
+<div class="modal-backdrop hidden" id="modalBackdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add product</h2>
+      <button class="modal-close" id="closeModalBtn" aria-label="Close">&times;</button>
+    </div>
+    <form id="productForm">
+      <input type="hidden" id="productId">
+
+      <div class="form-row">
+        <label for="fName">Name</label>
+        <input type="text" id="fName" required>
+      </div>
+
+      <div class="form-row">
+        <label for="fBrand">Brand</label>
+        <input type="text" id="fBrand" required>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-row">
+          <label for="fCategory">Category</label>
+          <input type="text" id="fCategory" placeholder="dry, wet, treats…">
+        </div>
+        <div class="form-row">
+          <label for="fFlavour">Flavour</label>
+          <input type="text" id="fFlavour" placeholder="chicken, salmon…">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-row">
+          <label for="fWeight">Weight (g)</label>
+          <input type="number" id="fWeight" min="0" step="1">
+        </div>
+        <div class="form-row">
+          <label for="fPrice">Price (USD)</label>
+          <input type="number" id="fPrice" min="0" step="0.01" placeholder="24.99">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-row">
+          <label for="fStock">Stock quantity</label>
+          <input type="number" id="fStock" min="0" step="1" value="0">
+        </div>
+        <div class="form-row">
+          <label for="fExpiration">Expiration date</label>
+          <input type="date" id="fExpiration">
+        </div>
+      </div>
+
+      <p class="form-error hidden" id="formError"></p>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Save product</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-backdrop hidden" id="deleteBackdrop">
+  <div class="modal modal-small" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2>Remove from manifest?</h2>
+      <button class="modal-close" id="closeDeleteBtn" aria-label="Close">&times;</button>
+    </div>
+    <p class="delete-copy" id="deleteCopy"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="cancelDeleteBtn">Cancel</button>
+      <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

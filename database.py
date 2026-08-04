@@ -1,6 +1,6 @@
 """
 database.py
-Handles the SQLite connection and schema for the cat food database.
+Handles the SQLite connection and schema for the cat food product database.
 """
 import sqlite3
 from pathlib import Path
@@ -8,21 +8,16 @@ from pathlib import Path
 DB_PATH = Path(__file__).parent / "cat_food.db"
 
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS cat_foods (
+CREATE TABLE IF NOT EXISTS products (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     name                TEXT NOT NULL,
     brand               TEXT NOT NULL,
-    food_type           TEXT NOT NULL CHECK (food_type IN ('dry', 'wet', 'raw', 'freeze-dried')),
-    life_stage          TEXT NOT NULL CHECK (life_stage IN ('kitten', 'adult', 'senior', 'all')),
-    grain_free          INTEGER NOT NULL DEFAULT 0,       -- 0/1 boolean
-    calories_per_100g   REAL,
-    protein_percent     REAL,
-    fat_percent         REAL,
-    fiber_percent       REAL,
-    moisture_percent    REAL,
-    price           REAL,                             -- price per typical unit (bag/can)
-    ingredients          TEXT,                            -- free-text ingredient list
-    description         TEXT,
+    category            TEXT,                    -- e.g. 'dry', 'wet', 'raw', 'treats'
+    flavour             TEXT,                    -- e.g. 'chicken', 'salmon'
+    weight              REAL,                    -- grams (or whatever unit you standardize on)
+    price               INTEGER NOT NULL DEFAULT 0,  -- price in cents
+    stock_qty           INTEGER NOT NULL DEFAULT 0,
+    expiration_date     TEXT,                    -- ISO date 'YYYY-MM-DD', nullable
     created_at          TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at          TEXT DEFAULT CURRENT_TIMESTAMP
 );
