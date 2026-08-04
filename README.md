@@ -1,8 +1,13 @@
 # CatifyInv
 
-A small inventory management app for cat food products: a Flask +
-SQLite REST API, and a vanilla HTML/CSS/JS frontend served directly
+A friendly home pantry tracker for your cat's food — see what you have,
+what's running low, and what needs a top-up. Built with a Flask +
+SQLite REST API and a vanilla HTML/CSS/JS frontend served directly
 by Flask (no build step, no CORS setup needed — same origin).
+
+This is meant for a household, not a shop: quantities, thresholds, and
+copy are tuned for "a couple of bags/cans in the cupboard," not
+warehouse-scale stock.
 
 ## Project structure
 
@@ -39,16 +44,16 @@ placeholder set.
 Each product has:
 
 | Field             | Type    | Notes                                              |
-|-------------------|---------|------------------------------------------------------|
-| id                | int     | auto-assigned                                        |
-| name              | string  | required                                             |
-| brand             | string  | required                                             |
-| category          | string  | e.g. `dry`, `wet`, `treats`, `freeze-dried`          |
-| flavour           | string  | e.g. `chicken`, `salmon`                             |
-| weight            | number  | grams                                                |
-| price             | int     | **stored in cents** (API also returns `price_usd`)   |
-| stock_qty         | int     | units in stock                                       |
-| expiration_date   | string  | ISO date `YYYY-MM-DD`, nullable                     |
+|-------------------|---------|----------------------------------------------------|
+| id                | int     | auto-assigned                                      |
+| name              | string  | required                                           |
+| brand             | string  | required                                           |
+| category          | string  | e.g. `dry`, `wet`, `treats`, `freeze-dried`        |
+| flavour           | string  | e.g. `chicken`, `salmon`                           |
+| weight            | number  | grams                                              |
+| price             | int     | **stored in cents** (API also returns `price_ron`) |
+| stock_qty         | int     | units in stock                                     |
+| expiration_date   | string  | ISO date `YYYY-MM-DD`, nullable                    |
 
 ## Frontend features
 
@@ -95,5 +100,12 @@ curl -X POST http://127.0.0.1:5000/api/products/1/adjust-stock \
 ### Dashboard aggregates `GET /api/stats`
 
 Returns `total_skus`, `low_stock_count` (≤10 units, >0), `out_of_stock_count`,
-`expiring_soon_count` (within 30 days), `total_value_usd` (sum of price × stock
+`expiring_soon_count` (within 30 days), `total_value_ron` (sum of price × stock
 across the whole catalog).
+
+## Next steps (when you're ready)
+
+- Reorder threshold per product (custom low-stock point instead of the fixed 10-unit default)
+- CSV import/export for bulk catalog management
+- Auth for admin actions if this becomes multi-user
+- Swap SQLite for Postgres/MySQL if you outgrow a single file

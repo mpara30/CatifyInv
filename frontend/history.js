@@ -38,6 +38,13 @@ async function loadHistory() {
   renderTable(entries);
 }
 
+const SOURCE_LABELS = {
+  create: "Added",
+  edit: "Edited",
+  adjust: "Quick +/-",
+  delete: "Removed",
+};
+
 function renderTable(entries) {
   if (entries.length === 0) {
     tableWrap.classList.add("hidden");
@@ -51,6 +58,7 @@ function renderTable(entries) {
     .map((h) => {
       const sign = h.delta > 0 ? "+" : "";
       const qtyCls = h.delta > 0 ? "positive" : "negative";
+      const label = SOURCE_LABELS[h.source] || h.source;
       return `
         <tr>
           <td class="cell-when">${formatWhen(h.created_at)}</td>
@@ -58,7 +66,7 @@ function renderTable(entries) {
           <td class="cell-brand">${escapeHtml(h.product_brand)}</td>
           <td class="cell-change">${h.previous_qty} &rarr; ${h.new_qty}</td>
           <td class="cell-qty ${qtyCls}">${sign}${h.delta}</td>
-          <td><span class="source-pill ${h.source}">${h.source}</span></td>
+          <td><span class="source-pill ${h.source}">${label}</span></td>
         </tr>`;
     })
     .join("");

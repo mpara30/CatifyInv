@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CatifyInv — History</title>
+<title>CatifyInv — Activity</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -12,10 +12,10 @@
 
 <header class="topbar">
   <div class="topbar-left">
-    <p class="eyebrow">LEDGER</p>
-    <h1>Stock History</h1>
+    <p class="eyebrow">ACTIVITY</p>
+    <h1>What's Changed</h1>
   </div>
-  <a class="btn btn-ghost" href="/">&larr; Back to inventory</a>
+  <a class="btn btn-ghost" href="/">&larr; Back to pantry</a>
 </header>
 
 <section class="toolbar">
@@ -23,17 +23,17 @@
 
   <select id="sourceFilter" class="input select">
     <option value="">All change types</option>
-    <option value="create">Product created</option>
-    <option value="adjust">Quick adjust</option>
-    <option value="edit">Manual edit</option>
-    <option value="delete">Product deleted</option>
+    <option value="create">Added</option>
+    <option value="adjust">Quick +/-</option>
+    <option value="edit">Edited</option>
+    <option value="delete">Removed</option>
   </select>
 </section>
 
 <main>
   <div id="emptyState" class="empty-state hidden">
-    <p class="empty-title">No stock changes yet.</p>
-    <p class="empty-sub">Adjust or edit a product's stock and it'll show up here.</p>
+    <p class="empty-title">Nothing here yet.</p>
+    <p class="empty-sub">Add, use, or restock something and it'll show up here.</p>
   </div>
 
   <div class="history-table-wrap">

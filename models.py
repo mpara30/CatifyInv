@@ -46,5 +46,5 @@ class Product:
     def to_dict(self) -> dict:
         d = asdict(self)
         d["expiration_date"] = self.expiration_date.isoformat() if self.expiration_date else None
-        d["price_usd"] = round(self.price / 100, 2)
+        d["price_ron"] = round(self.price / 100, 2)
         return d

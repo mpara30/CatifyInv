@@ -17,7 +17,7 @@ PLACEHOLDER_PRODUCTS = [
         flavour="chicken",
         weight=2000,          # grams
         price=2499,            # cents -> $24.99
-        stock_qty=42,
+        stock_qty=2,
         expiration_date="2027-03-15",
     ),
     dict(
@@ -27,7 +27,7 @@ PLACEHOLDER_PRODUCTS = [
         flavour="salmon",
         weight=85,
         price=129,
-        stock_qty=180,
+        stock_qty=8,
         expiration_date="2026-11-01",
     ),
     dict(
@@ -47,7 +47,7 @@ PLACEHOLDER_PRODUCTS = [
         flavour="turkey",
         weight=85,
         price=149,
-        stock_qty=95,
+        stock_qty=5,
         expiration_date="2026-09-10",
     ),
     dict(
@@ -57,7 +57,7 @@ PLACEHOLDER_PRODUCTS = [
         flavour="rabbit",
         weight=340,
         price=3499,
-        stock_qty=12,
+        stock_qty=1,
         expiration_date="2027-06-30",
     ),
     dict(
@@ -67,7 +67,7 @@ PLACEHOLDER_PRODUCTS = [
         flavour="chicken",
         weight=1800,
         price=2199,
-        stock_qty=60,
+        stock_qty=3,
         expiration_date="2026-08-25",
     ),
     dict(
@@ -77,7 +77,7 @@ PLACEHOLDER_PRODUCTS = [
         flavour="salmon",
         weight=60,
         price=399,
-        stock_qty=200,
+        stock_qty=6,
         expiration_date="2026-08-15",
     ),
 ]

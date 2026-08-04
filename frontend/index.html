@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CatifyInv — Manifest</title>
+<title>CatifyInv — Home Pantry</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -12,17 +12,17 @@
 
 <header class="topbar">
   <div class="topbar-left">
-    <p class="eyebrow">MANIFEST</p>
+    <p class="eyebrow">MY PANTRY</p>
     <h1>CatifyInv</h1>
   </div>
   <div class="topbar-stats" id="stats">
     <div class="stat">
       <span class="stat-value" id="statTotal">–</span>
-      <span class="stat-label">SKUs</span>
+      <span class="stat-label">Foods</span>
     </div>
     <div class="stat stat-warn">
       <span class="stat-value" id="statLow">–</span>
-      <span class="stat-label">Low stock</span>
+      <span class="stat-label">Running low</span>
     </div>
     <div class="stat stat-danger">
       <span class="stat-value" id="statExpiring">–</span>
@@ -30,10 +30,10 @@
     </div>
     <div class="stat stat-value-stat">
       <span class="stat-value" id="statValue">–</span>
-      <span class="stat-label">Inventory value</span>
+      <span class="stat-label">Stock value</span>
     </div>
   </div>
-  <button class="btn btn-primary" id="openAddBtn">+ Add product</button>
+  <button class="btn btn-primary" id="openAddBtn">+ Add food</button>
   <a class="btn btn-ghost" href="/history">History</a>
 </header>
 
@@ -67,8 +67,8 @@
 
 <main>
   <div id="emptyState" class="empty-state hidden">
-    <p class="empty-title">No products match.</p>
-    <p class="empty-sub">Try clearing a filter, or add a new product to the manifest.</p>
+    <p class="empty-title">Nothing matches.</p>
+    <p class="empty-sub">Try clearing a filter, or add a food to your pantry.</p>
   </div>
 
   <div id="productGrid" class="product-grid"></div>
@@ -78,7 +78,7 @@
 <div class="modal-backdrop hidden" id="modalBackdrop">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-header">
-      <h2 id="modalTitle">Add product</h2>
+      <h2 id="modalTitle">Add food</h2>
       <button class="modal-close" id="closeModalBtn" aria-label="Close">&times;</button>
     </div>
     <form id="productForm">
@@ -111,14 +111,14 @@
           <input type="number" id="fWeight" min="0" step="1">
         </div>
         <div class="form-row">
-          <label for="fPrice">Price (USD)</label>
+          <label for="fPrice">Price (RON)</label>
           <input type="number" id="fPrice" min="0" step="0.01" placeholder="24.99">
         </div>
       </div>
 
       <div class="form-grid">
         <div class="form-row">
-          <label for="fStock">Stock quantity</label>
+          <label for="fStock">How many you have</label>
           <input type="number" id="fStock" min="0" step="1" value="0">
         </div>
         <div class="form-row">
@@ -136,7 +136,7 @@
 
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="submitBtn">Save product</button>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Save</button>
       </div>
     </form>
   </div>
@@ -146,7 +146,7 @@
 <div class="modal-backdrop hidden" id="deleteBackdrop">
   <div class="modal modal-small" role="dialog" aria-modal="true">
     <div class="modal-header">
-      <h2>Remove from manifest?</h2>
+      <h2>Remove from your pantry?</h2>
       <button class="modal-close" id="closeDeleteBtn" aria-label="Close">&times;</button>
     </div>
     <p class="delete-copy" id="deleteCopy"></p>

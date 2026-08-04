@@ -40,8 +40,8 @@ function showToast(message) {
   showToast._t = setTimeout(() => toast.classList.add("hidden"), 2400);
 }
 
-function formatMoney(usd) {
-  return `$${usd.toFixed(2)}`;
+function formatMoney(ron) {
+  return `${ron.toFixed(2)} RON`;
 }
 
 function daysFromToday(isoDate) {
@@ -60,9 +60,9 @@ function expirationClass(isoDate) {
 }
 
 function stockBadge(qty) {
-  if (qty === 0) return { cls: "badge-out", label: "Out of stock" };
-  if (qty <= 10) return { cls: "badge-low", label: "Low stock" };
-  return { cls: "badge-in", label: "In stock" };
+  if (qty === 0) return { cls: "badge-out", label: "Need more" };
+  if (qty <= 2) return { cls: "badge-low", label: "Running low" };
+  return { cls: "badge-in", label: "Stocked" };
 }
 
 // ---------- API calls ----------
@@ -97,7 +97,7 @@ async function loadStats() {
     document.getElementById("statTotal").textContent = stats.total_skus;
     document.getElementById("statLow").textContent = stats.low_stock_count;
     document.getElementById("statExpiring").textContent = stats.expiring_soon_count;
-    document.getElementById("statValue").textContent = formatMoney(stats.total_value_usd);
+    document.getElementById("statValue").textContent = formatMoney(stats.total_value_ron);
   } catch (e) {
     console.error(e);
   }
@@ -158,7 +158,6 @@ function renderProducts(items) {
     card.className = "card";
     card.innerHTML = `
       <div class="card-top">
-        <span class="card-sku">SKU-${String(p.id).padStart(4, "0")}</span>
         <span class="badge ${badge.cls}">${badge.label}</span>
       </div>
       <h3 class="card-name">${escapeHtml(p.name)}</h3>
@@ -170,10 +169,10 @@ function renderProducts(items) {
       </div>
       <div class="card-row">
         <span class="card-row-label">Price</span>
-        <span class="card-row-value">${formatMoney(p.price_usd)}</span>
+        <span class="card-row-value">${formatMoney(p.price_ron)}</span>
       </div>
       <div class="card-row">
-        <span class="card-row-label">Stock</span>
+        <span class="card-row-label">You have</span>
         <span class="card-row-value">
           <div class="stock-adjust">
             <button class="stock-btn" data-action="dec" data-id="${p.id}" ${p.stock_qty === 0 ? "disabled" : ""}>–</button>
@@ -272,7 +271,7 @@ async function openEditModal(id) {
   document.getElementById("fCategory").value = p.category || "";
   document.getElementById("fFlavour").value = p.flavour || "";
   document.getElementById("fWeight").value = p.weight || 0;
-  document.getElementById("fPrice").value = p.price_usd;
+  document.getElementById("fPrice").value = p.price_ron;
   document.getElementById("fStock").value = p.stock_qty;
   document.getElementById("fExpiration").value = p.expiration_date || "";
   modalTitle.textContent = "Edit product";
@@ -331,7 +330,7 @@ productForm.addEventListener("submit", async (e) => {
   formError.classList.add("hidden");
 
   const id = document.getElementById("productId").value;
-  const priceUsd = parseFloat(document.getElementById("fPrice").value || "0");
+  const priceRon = parseFloat(document.getElementById("fPrice").value || "0");
 
   const payload = {
     name: document.getElementById("fName").value.trim(),
@@ -339,7 +338,7 @@ productForm.addEventListener("submit", async (e) => {
     category: document.getElementById("fCategory").value.trim(),
     flavour: document.getElementById("fFlavour").value.trim(),
     weight: parseFloat(document.getElementById("fWeight").value || "0"),
-    price: Math.round(priceUsd * 100),
+    price: Math.round(priceRon * 100),
     stock_qty: parseInt(document.getElementById("fStock").value || "0", 10),
     expiration_date: document.getElementById("fExpiration").value || null,
   };

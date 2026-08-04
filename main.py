@@ -49,7 +49,7 @@ SORTABLE_FIELDS = {"name", "brand", "price", "stock_qty", "expiration_date"}
 # Explicit column order matches Product.from_row's expectations.
 COLUMNS = "id, name, brand, category, flavour, weight, price, stock_qty, expiration_date"
 
-LOW_STOCK_THRESHOLD = 10   # stock_qty at/below this (but > 0) counts as "low stock"
+LOW_STOCK_THRESHOLD = 2    # stock_qty at/below this (but > 0) counts as "running low" — tuned for home quantities, not shop stock
 EXPIRING_SOON_DAYS = 30    # expiration_date within this many days counts as "expiring soon"
 
 
@@ -141,7 +141,7 @@ def stats():
             low_stock_count=low_stock_count,
             out_of_stock_count=out_of_stock_count,
             expiring_soon_count=expiring_soon_count,
-            total_value_usd=round(total_value_cents / 100, 2),
+            total_value_ron=round(total_value_cents / 100, 2),
             low_stock_threshold=LOW_STOCK_THRESHOLD,
             expiring_soon_days=EXPIRING_SOON_DAYS,
         )
