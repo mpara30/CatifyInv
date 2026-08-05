@@ -27,11 +27,15 @@ pip install -r tests/requirements-test.txt
 pytest
 ```
 
-This works whether you run it from the project root or from inside
-`tests/` -- `tests/pytest.ini` sets `pythonpath = ..`, which tells pytest
-itself to put the project root on `sys.path` (pytest >= 7.0 required,
-already pinned in `requirements-test.txt`). No `sys.path` hacks, no
-`__init__.py` needed in `tests/`.
+This works from the project root, from inside `tests/`, or from any CI
+working directory, and with any invocation style (`pytest`, `python -m
+pytest`, `pytest tests`, `pytest tests/test_create_product.py`, etc.).
+`conftest.py` inserts the project root onto `sys.path` itself as its
+first line of code, which runs unconditionally before pytest collects
+anything -- unlike an ini-file option (`pythonpath = ..`), which only
+takes effect if pytest's config search happens to reach that ini file,
+and that search only walks *upward* from your invocation path, never
+down into subdirectories.
 
 ## How isolation works
 

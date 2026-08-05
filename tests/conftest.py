@@ -7,19 +7,30 @@ main.py, database.py, models.py), then:
     pip install pytest
     pytest
 
-`pytest.ini` (in this directory) sets `pythonpath = ..`, which puts the
-project root on sys.path automatically -- this works no matter which
-directory you invoke pytest from, and with either `pytest` or
-`python -m pytest`.
+The sys.path.insert below makes `import database` / `import main` work
+no matter what directory pytest is invoked from or with what arguments.
+(An earlier version of this file relied on tests/pytest.ini's
+`pythonpath = ..` option instead -- that only works if pytest's config
+search actually reaches tests/pytest.ini, which it doesn't when invoked
+as bare `pytest` from the project root: pytest searches from the
+invocation args' common ancestor *upward*, never down into
+subdirectories, so a bare `pytest` run from the project root never finds
+an ini file that lives inside tests/. This runs unconditionally instead,
+since conftest.py is always imported before collection.)
 
 Each test gets its own throwaway SQLite file (via tmp_path), so tests
 never touch your real cat_food.db and can run in any order or in
 parallel.
 """
-import pytest
+import sys
+from pathlib import Path
 
-import database
-import main as main_module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # pylint: disable=wrong-import-position
+
+import pytest  # noqa: E402  pylint: disable=wrong-import-position
+
+import database  # noqa: E402  pylint: disable=wrong-import-position
+import main as main_module  # noqa: E402  pylint: disable=wrong-import-position
 
 
 @pytest.fixture()
