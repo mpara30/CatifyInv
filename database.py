@@ -15,8 +15,9 @@ CREATE TABLE IF NOT EXISTS products (
     category            TEXT,                    -- e.g. 'dry', 'wet', 'raw', 'treats'
     flavour             TEXT,                    -- e.g. 'chicken', 'salmon'
     weight              REAL,                    -- grams (or whatever unit you standardize on)
-    price               INTEGER NOT NULL DEFAULT 0,  -- price in cents
-    stock_qty           INTEGER NOT NULL DEFAULT 0,
+    price               INTEGER NOT NULL DEFAULT 0,  -- price PER INDIVIDUAL UNIT, in bani (RON subunit) — matches stock_qty's unit
+    units_per_box       INTEGER,                 -- optional: items inside one box/case (e.g. 12 cans). Used to add a full box at once. NULL = not sold as a box.
+    stock_qty           INTEGER NOT NULL DEFAULT 0,  -- ALWAYS individual units on hand (cans/pouches/bags), never a box count
     expiration_date     TEXT,                    -- ISO date 'YYYY-MM-DD', nullable
     created_at          TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at          TEXT DEFAULT CURRENT_TIMESTAMP

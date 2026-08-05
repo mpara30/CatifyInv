@@ -44,16 +44,17 @@ placeholder set.
 Each product has:
 
 | Field             | Type    | Notes                                              |
-|-------------------|---------|----------------------------------------------------|
-| id                | int     | auto-assigned                                      |
-| name              | string  | required                                           |
-| brand             | string  | required                                           |
-| category          | string  | e.g. `dry`, `wet`, `treats`, `freeze-dried`        |
-| flavour           | string  | e.g. `chicken`, `salmon`                           |
-| weight            | number  | grams                                              |
-| price             | int     | **stored in cents** (API also returns `price_ron`) |
-| stock_qty         | int     | units in stock                                     |
-| expiration_date   | string  | ISO date `YYYY-MM-DD`, nullable                    |
+|-------------------|---------|------------------------------------------------------|
+| id                | int     | auto-assigned                                        |
+| name              | string  | required                                             |
+| brand             | string  | required                                             |
+| category          | string  | e.g. `dry`, `wet`, `treats`, `freeze-dried`          |
+| flavour           | string  | e.g. `chicken`, `salmon`                             |
+| weight            | number  | grams                                                |
+| price             | int     | **price per box/bag/case, in bani (RON subunit)** — what you paid for one (API also returns `price_ron` and `price_per_box_ron`) |
+| units_per_box     | int     | optional — items inside one box (e.g. 12 cans). Omit/null for single items, not sold as a box. API also returns computed `total_units` (`stock_qty × units_per_box`, or just `stock_qty` when not a box) |
+| stock_qty         | int     | units in stock                                       |
+| expiration_date   | string  | ISO date `YYYY-MM-DD`, nullable                     |
 
 ## Frontend features
 
@@ -86,7 +87,7 @@ Each product has:
 - `category=dry`
 - `flavour=chicken`
 - `in_stock=true` / `in_stock=false`
-- `max_price=2500` (cents)
+- `max_price=11500` (bani, price per box)
 - `expiring_before=2026-12-31`
 - `sort=price&order=desc`
 
@@ -102,10 +103,3 @@ curl -X POST http://127.0.0.1:5000/api/products/1/adjust-stock \
 Returns `total_skus`, `low_stock_count` (≤10 units, >0), `out_of_stock_count`,
 `expiring_soon_count` (within 30 days), `total_value_ron` (sum of price × stock
 across the whole catalog).
-
-## Next steps (when you're ready)
-
-- Reorder threshold per product (custom low-stock point instead of the fixed 10-unit default)
-- CSV import/export for bulk catalog management
-- Auth for admin actions if this becomes multi-user
-- Swap SQLite for Postgres/MySQL if you outgrow a single file

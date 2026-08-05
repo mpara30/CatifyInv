@@ -41,7 +41,7 @@ function showToast(message) {
 }
 
 function formatMoney(ron) {
-  return `${ron.toFixed(2)} RON`;
+  return `${ron.toFixed(2)} lei`;
 }
 
 function daysFromToday(isoDate) {
@@ -166,25 +166,26 @@ function renderProducts(items) {
         ${p.category ? `<span class="tag">${escapeHtml(p.category)}</span>` : ""}
         ${p.flavour ? `<span class="tag">${escapeHtml(p.flavour)}</span>` : ""}
         ${p.weight ? `<span class="tag">${p.weight}g</span>` : ""}
+        ${p.units_per_box ? `<span class="tag">box of ${p.units_per_box}</span>` : ""}
       </div>
       <div class="card-row">
-        <span class="card-row-label">Price</span>
+        <span class="card-row-label">Price per unit</span>
         <span class="card-row-value">${formatMoney(p.price_ron)}</span>
       </div>
+      ${p.units_per_box ? `
+      <div class="card-row card-row-sub">
+        <span class="card-row-label">Box price</span>
+        <span class="units-hint">≈ ${formatMoney(p.price_ron * p.units_per_box)}</span>
+      </div>` : ""}
       <div class="card-row">
         <span class="card-row-label">You have</span>
-        <span class="card-row-value">
-          <div class="stock-adjust">
-            <button class="stock-btn" data-action="dec" data-id="${p.id}" ${p.stock_qty === 0 ? "disabled" : ""}>–</button>
-            <span>${p.stock_qty}</span>
-            <button class="stock-btn" data-action="inc" data-id="${p.id}">+</button>
-          </div>
-        </span>
+        <span class="card-row-value">${p.stock_qty}</span>
       </div>
       <div class="card-row">
         <span class="card-row-label">Use by</span>
         <span class="card-row-value ${expClass}">${p.expiration_date || "—"}</span>
       </div>
+      <button class="btn btn-feed" data-action="feed" data-id="${p.id}" ${p.stock_qty === 0 ? "disabled" : ""}>🐾 Feed</button>
       <div class="card-actions">
         <button class="btn btn-ghost" data-action="edit" data-id="${p.id}">Edit</button>
         <button class="btn btn-ghost" data-action="delete" data-id="${p.id}">Delete</button>
@@ -228,11 +229,11 @@ grid.addEventListener("click", async (e) => {
     openEditModal(id);
   } else if (action === "delete") {
     openDeleteModal(id);
-  } else if (action === "inc" || action === "dec") {
-    const delta = action === "inc" ? 1 : -1;
+  } else if (action === "feed") {
     btn.disabled = true;
     try {
-      await apiSend(`/products/${id}/adjust-stock`, "POST", { delta });
+      await apiSend(`/products/${id}/adjust-stock`, "POST", { delta: -1 });
+      showToast("Fed! 🐾");
       await loadAll();
     } catch (err) {
       showToast(err.message);
@@ -255,7 +256,12 @@ function openAddModal() {
   productForm.reset();
   document.getElementById("productId").value = "";
   document.getElementById("fStock").value = 0;
-  modalTitle.textContent = "Add product";
+  document.getElementById("fUnitsPerBox").value = "";
+  document.getElementById("fBoxesToAdd").value = "";
+  document.getElementById("fIsBox").checked = false;
+  setBoxMode(false);
+  document.getElementById("boxSection").classList.remove("hidden");
+  modalTitle.textContent = "Add food";
   formError.classList.add("hidden");
   document.getElementById("historySection").classList.add("hidden");
   modalBackdrop.classList.remove("hidden");
@@ -272,9 +278,19 @@ async function openEditModal(id) {
   document.getElementById("fFlavour").value = p.flavour || "";
   document.getElementById("fWeight").value = p.weight || 0;
   document.getElementById("fPrice").value = p.price_ron;
+  // units_per_box isn't user-editable here — box options only apply when adding —
+  // but we keep its current value so editing other fields doesn't clear it.
+  document.getElementById("fUnitsPerBox").value = p.units_per_box || "";
+  document.getElementById("fBoxesToAdd").value = "";
+  document.getElementById("fIsBox").checked = false;
+  document.getElementById("boxSection").classList.add("hidden");
+  document.getElementById("individualQtyRow").classList.remove("hidden");
+  document.getElementById("fPriceLabel").textContent = "Price per unit (RON)";
+  document.getElementById("fPrice").placeholder = "9.99 per unit";
+  document.getElementById("pricePerUnitHint").classList.add("hidden");
   document.getElementById("fStock").value = p.stock_qty;
   document.getElementById("fExpiration").value = p.expiration_date || "";
-  modalTitle.textContent = "Edit product";
+  modalTitle.textContent = "Edit food";
   formError.classList.add("hidden");
   modalBackdrop.classList.remove("hidden");
   document.getElementById("fName").focus();
@@ -320,6 +336,70 @@ function closeModal() {
 
 openAddBtn.addEventListener("click", openAddModal);
 closeModalBtn.addEventListener("click", closeModal);
+
+// Box mode is all-or-nothing: checked shows only box fields and hides the
+// raw quantity field entirely; unchecked is the plain single-item flow.
+function setBoxMode(isBox) {
+  const boxDetails = document.getElementById("boxDetails");
+  const individualRow = document.getElementById("individualQtyRow");
+  const unitsInput = document.getElementById("fUnitsPerBox");
+  const boxesInput = document.getElementById("fBoxesToAdd");
+  const priceLabel = document.getElementById("fPriceLabel");
+  const priceInput = document.getElementById("fPrice");
+  const priceHint = document.getElementById("pricePerUnitHint");
+
+  if (isBox) {
+    boxDetails.classList.remove("hidden");
+    individualRow.classList.add("hidden");
+    unitsInput.required = true;
+    boxesInput.required = true;
+    priceLabel.textContent = "Price per box (RON)";
+    priceInput.placeholder = "114.99 for the whole box";
+  } else {
+    boxDetails.classList.add("hidden");
+    individualRow.classList.remove("hidden");
+    unitsInput.required = false;
+    boxesInput.required = false;
+    priceLabel.textContent = "Price per unit (RON)";
+    priceInput.placeholder = "9.99 per unit";
+    priceHint.classList.add("hidden");
+  }
+  updatePriceHint();
+}
+document.getElementById("fIsBox").addEventListener("change", (e) => setBoxMode(e.target.checked));
+
+// While in box mode, show what the entered box price works out to per unit —
+// that per-unit figure is what actually gets saved.
+function updatePriceHint() {
+  const isBox = document.getElementById("fIsBox").checked;
+  const priceHint = document.getElementById("pricePerUnitHint");
+  if (!isBox) {
+    priceHint.classList.add("hidden");
+    return;
+  }
+  const boxPrice = parseFloat(document.getElementById("fPrice").value);
+  const unitsPerBox = parseInt(document.getElementById("fUnitsPerBox").value, 10);
+  if (boxPrice > 0 && unitsPerBox > 0) {
+    priceHint.textContent = `= ${(boxPrice / unitsPerBox).toFixed(2)} lei per unit`;
+    priceHint.classList.remove("hidden");
+  } else {
+    priceHint.classList.add("hidden");
+  }
+}
+document.getElementById("fPrice").addEventListener("input", updatePriceHint);
+document.getElementById("fUnitsPerBox").addEventListener("input", updatePriceHint);
+
+// Whenever units-per-box and boxes-you-have both have values, compute the
+// total individual units into the (hidden, but still submitted) quantity field.
+function recalcStockFromBoxes() {
+  const unitsPerBox = parseInt(document.getElementById("fUnitsPerBox").value, 10);
+  const boxes = parseInt(document.getElementById("fBoxesToAdd").value, 10);
+  if (unitsPerBox > 0 && boxes > 0) {
+    document.getElementById("fStock").value = unitsPerBox * boxes;
+  }
+}
+document.getElementById("fUnitsPerBox").addEventListener("input", recalcStockFromBoxes);
+document.getElementById("fBoxesToAdd").addEventListener("input", recalcStockFromBoxes);
 cancelBtn.addEventListener("click", closeModal);
 modalBackdrop.addEventListener("click", (e) => {
   if (e.target === modalBackdrop) closeModal();
@@ -330,7 +410,28 @@ productForm.addEventListener("submit", async (e) => {
   formError.classList.add("hidden");
 
   const id = document.getElementById("productId").value;
-  const priceRon = parseFloat(document.getElementById("fPrice").value || "0");
+  const priceEnteredRon = parseFloat(document.getElementById("fPrice").value || "0");
+
+  let unitsPerBox;
+  let pricePerUnitRon;
+  if (id) {
+    // Editing: box options aren't shown, so just preserve whatever value
+    // was loaded from the product (don't let this silently wipe it out),
+    // and the price field is always per-unit here.
+    const raw = document.getElementById("fUnitsPerBox").value.trim();
+    unitsPerBox = raw ? parseInt(raw, 10) : null;
+    pricePerUnitRon = priceEnteredRon;
+  } else {
+    // Adding: units_per_box only applies if "this comes in a box" is checked.
+    const isBox = document.getElementById("fIsBox").checked;
+    const raw = document.getElementById("fUnitsPerBox").value.trim();
+    unitsPerBox = isBox && raw ? parseInt(raw, 10) : null;
+    // In box mode the entered price is for the WHOLE box — convert to per-unit
+    // before saving, since price always has to match stock_qty's unit.
+    pricePerUnitRon = isBox && unitsPerBox
+      ? priceEnteredRon / unitsPerBox
+      : priceEnteredRon;
+  }
 
   const payload = {
     name: document.getElementById("fName").value.trim(),
@@ -338,7 +439,8 @@ productForm.addEventListener("submit", async (e) => {
     category: document.getElementById("fCategory").value.trim(),
     flavour: document.getElementById("fFlavour").value.trim(),
     weight: parseFloat(document.getElementById("fWeight").value || "0"),
-    price: Math.round(priceRon * 100),
+    price: Math.round(pricePerUnitRon * 100),
+    units_per_box: unitsPerBox,
     stock_qty: parseInt(document.getElementById("fStock").value || "0", 10),
     expiration_date: document.getElementById("fExpiration").value || null,
   };

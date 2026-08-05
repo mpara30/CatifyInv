@@ -57,8 +57,8 @@
   <select id="sortSelect" class="input select">
     <option value="name-asc">Name A–Z</option>
     <option value="name-desc">Name Z–A</option>
-    <option value="price-asc">Price low–high</option>
-    <option value="price-desc">Price high–low</option>
+    <option value="price-asc">Price per unit low–high</option>
+    <option value="price-desc">Price per unit high–low</option>
     <option value="stock_qty-asc">Stock low–high</option>
     <option value="stock_qty-desc">Stock high–low</option>
     <option value="expiration_date-asc">Expiring soonest</option>
@@ -111,20 +111,42 @@
           <input type="number" id="fWeight" min="0" step="1">
         </div>
         <div class="form-row">
-          <label for="fPrice">Price (RON)</label>
-          <input type="number" id="fPrice" min="0" step="0.01" placeholder="24.99">
+          <label for="fPrice" id="fPriceLabel">Price per unit (RON)</label>
+          <input type="number" id="fPrice" min="0" step="0.01" placeholder="9.99 per unit">
+          <span class="field-hint hidden" id="pricePerUnitHint"></span>
         </div>
       </div>
 
-      <div class="form-grid">
-        <div class="form-row">
-          <label for="fStock">How many you have</label>
-          <input type="number" id="fStock" min="0" step="1" value="0">
+      <div id="boxSection">
+        <div class="form-row checkbox-row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="fIsBox">
+            This comes in a box (e.g. a case of cans)
+          </label>
         </div>
-        <div class="form-row">
-          <label for="fExpiration">Expiration date</label>
-          <input type="date" id="fExpiration">
+
+        <div id="boxDetails" class="hidden">
+          <div class="form-grid">
+            <div class="form-row">
+              <label for="fUnitsPerBox">Units per box</label>
+              <input type="number" id="fUnitsPerBox" min="1" step="1" placeholder="e.g. 12 cans">
+            </div>
+            <div class="form-row">
+              <label for="fBoxesToAdd">How many boxes you have</label>
+              <input type="number" id="fBoxesToAdd" min="1" step="1" placeholder="e.g. 2 boxes">
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="form-row" id="individualQtyRow">
+        <label for="fStock">How many you have</label>
+        <input type="number" id="fStock" min="0" step="1" value="0">
+      </div>
+
+      <div class="form-row">
+        <label for="fExpiration">Expiration date</label>
+        <input type="date" id="fExpiration">
       </div>
 
       <p class="form-error hidden" id="formError"></p>

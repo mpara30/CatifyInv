@@ -16,7 +16,8 @@ PLACEHOLDER_PRODUCTS = [
         category="dry",
         flavour="chicken",
         weight=2000,          # grams
-        price=2499,            # cents -> $24.99
+        price=11499,           # bani -> 114.99 RON per box
+        units_per_box=None,
         stock_qty=2,
         expiration_date="2027-03-15",
     ),
@@ -26,7 +27,8 @@ PLACEHOLDER_PRODUCTS = [
         category="wet",
         flavour="salmon",
         weight=85,
-        price=129,
+        price=599,
+        units_per_box=None,
         stock_qty=8,
         expiration_date="2026-11-01",
     ),
@@ -36,7 +38,8 @@ PLACEHOLDER_PRODUCTS = [
         category="dry",
         flavour="chicken",
         weight=1500,
-        price=1999,
+        price=9199,
+        units_per_box=None,
         stock_qty=0,
         expiration_date="2027-01-20",
     ),
@@ -46,7 +49,8 @@ PLACEHOLDER_PRODUCTS = [
         category="wet",
         flavour="turkey",
         weight=85,
-        price=149,
+        price=699,
+        units_per_box=None,
         stock_qty=5,
         expiration_date="2026-09-10",
     ),
@@ -56,7 +60,8 @@ PLACEHOLDER_PRODUCTS = [
         category="freeze-dried",
         flavour="rabbit",
         weight=340,
-        price=3499,
+        price=16099,
+        units_per_box=None,
         stock_qty=1,
         expiration_date="2027-06-30",
     ),
@@ -66,7 +71,8 @@ PLACEHOLDER_PRODUCTS = [
         category="dry",
         flavour="chicken",
         weight=1800,
-        price=2199,
+        price=10199,
+        units_per_box=None,
         stock_qty=3,
         expiration_date="2026-08-25",
     ),
@@ -76,8 +82,9 @@ PLACEHOLDER_PRODUCTS = [
         category="treats",
         flavour="salmon",
         weight=60,
-        price=399,
-        stock_qty=6,
+        price=317,                 # bani -> 3.17 RON PER POUCH (18.99 RON box of 6 ÷ 6)
+        units_per_box=6,          # sold as a box of 6 pouches
+        stock_qty=12,              # 2 boxes' worth, tracked as individual pouches
         expiration_date="2026-08-15",
     ),
 ]
@@ -92,10 +99,10 @@ def seed():
             """
             INSERT INTO products (
                 name, brand, category, flavour, weight,
-                price, stock_qty, expiration_date
+                price, units_per_box, stock_qty, expiration_date
             ) VALUES (
                 :name, :brand, :category, :flavour, :weight,
-                :price, :stock_qty, :expiration_date
+                :price, :units_per_box, :stock_qty, :expiration_date
             )
             """,
             PLACEHOLDER_PRODUCTS,

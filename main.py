@@ -21,7 +21,7 @@ Filters for GET /api/products (all optional, combine with &):
     category         dry | wet | raw | freeze-dried | treats (whatever you seed)
     flavour          exact flavour match
     in_stock         true -> stock_qty > 0 | false -> stock_qty = 0
-    max_price        maximum price in cents
+    max_price        maximum price per unit, in bani (RON subunit)
     expiring_before  ISO date -> only products expiring on/before this date
     sort             name | brand | price | stock_qty | expiration_date
     order            asc | desc (default asc)
@@ -42,12 +42,12 @@ app = Flask(__name__, static_folder="frontend", static_url_path="")
 REQUIRED_FIELDS = {"name", "brand"}
 ALLOWED_FIELDS = {
     "name", "brand", "category", "flavour", "weight",
-    "price", "stock_qty", "expiration_date",
+    "price", "units_per_box", "stock_qty", "expiration_date",
 }
 SORTABLE_FIELDS = {"name", "brand", "price", "stock_qty", "expiration_date"}
 
 # Explicit column order matches Product.from_row's expectations.
-COLUMNS = "id, name, brand, category, flavour, weight, price, stock_qty, expiration_date"
+COLUMNS = "id, name, brand, category, flavour, weight, price, units_per_box, stock_qty, expiration_date"
 
 LOW_STOCK_THRESHOLD = 2    # stock_qty at/below this (but > 0) counts as "running low" — tuned for home quantities, not shop stock
 EXPIRING_SOON_DAYS = 30    # expiration_date within this many days counts as "expiring soon"
@@ -65,7 +65,11 @@ def validate_payload(data, partial=False):
             return f"Missing required field(s): {', '.join(sorted(missing))}"
 
     if "price" in data and (not isinstance(data["price"], int) or data["price"] < 0):
-        return "price must be a non-negative integer (cents)"
+        return "price (price per unit, in bani) must be a non-negative integer"
+
+    if "units_per_box" in data and data["units_per_box"] is not None:
+        if not isinstance(data["units_per_box"], int) or data["units_per_box"] < 1:
+            return "units_per_box must be a positive integer, or omitted/null for single items"
 
     if "stock_qty" in data and (not isinstance(data["stock_qty"], int) or data["stock_qty"] < 0):
         return "stock_qty must be a non-negative integer"
@@ -132,7 +136,7 @@ def stats():
             (today, soon),
         ).fetchone()[0]
 
-        total_value_cents = conn.execute(
+        total_value_bani = conn.execute(
             "SELECT COALESCE(SUM(price * stock_qty), 0) FROM products"
         ).fetchone()[0]
 
@@ -141,7 +145,7 @@ def stats():
             low_stock_count=low_stock_count,
             out_of_stock_count=out_of_stock_count,
             expiring_soon_count=expiring_soon_count,
-            total_value_ron=round(total_value_cents / 100, 2),
+            total_value_ron=round(total_value_bani / 100, 2),
             low_stock_threshold=LOW_STOCK_THRESHOLD,
             expiring_soon_days=EXPIRING_SOON_DAYS,
         )
@@ -230,6 +234,7 @@ def create_product():
     data.setdefault("flavour", "")
     data.setdefault("weight", 0)
     data.setdefault("price", 0)
+    data.setdefault("units_per_box", None)
     data.setdefault("stock_qty", 0)
     data.setdefault("expiration_date", None)
 

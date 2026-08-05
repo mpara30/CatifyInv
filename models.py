@@ -16,16 +16,17 @@ class Product:
     category: str = ''
     flavour: str = ''
     weight: float = 0
-    price: int = 0
-    stock_qty: int = 0
+    price: int = 0          # price PER INDIVIDUAL UNIT, in bani (RON subunit) — matches stock_qty's unit
+    units_per_box: Optional[int] = None   # items inside one box (e.g. 12 cans). Used to add a full box at once. None = not sold as a box.
+    stock_qty: int = 0      # ALWAYS individual units on hand (cans/pouches/bags), never a box count
     expiration_date: Optional[date] = None
 
     @classmethod
     def from_row(cls, row) -> "Product":
         """Build a Product from a sqlite3.Row (or plain tuple) in column order:
-        id, name, brand, category, flavour, weight, price, stock_qty, expiration_date
+        id, name, brand, category, flavour, weight, price, units_per_box, stock_qty, expiration_date
         """
-        raw_expiration = row[8]
+        raw_expiration = row[9]
         if raw_expiration:
             expiration_date = datetime.strptime(raw_expiration, "%Y-%m-%d").date()
         else:
@@ -39,7 +40,8 @@ class Product:
             flavour=row[4] or '',
             weight=row[5] or 0,
             price=int(row[6]),
-            stock_qty=int(row[7]),
+            units_per_box=int(row[7]) if row[7] is not None else None,
+            stock_qty=int(row[8]),
             expiration_date=expiration_date,
         )
 
@@ -47,4 +49,5 @@ class Product:
         d = asdict(self)
         d["expiration_date"] = self.expiration_date.isoformat() if self.expiration_date else None
         d["price_ron"] = round(self.price / 100, 2)
+        d["price_per_unit_ron"] = d["price_ron"]  # explicit alias: this is price PER UNIT, matches stock_qty
         return d
