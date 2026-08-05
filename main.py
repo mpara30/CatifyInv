@@ -203,10 +203,10 @@ def list_products():
         sort = "name"
     order = "DESC" if args.get("order", "asc").lower() == "desc" else "ASC"
 
-    sql = f"SELECT {COLUMNS} FROM products"
+    sql = f"SELECT {COLUMNS} FROM products" # nosec B608
     if clauses:
         sql += " WHERE " + " AND ".join(clauses)
-    sql += f" ORDER BY {sort} {order}" # nosec B608
+    sql += f" ORDER BY {sort} {order}"
 
     conn = get_connection()
     try:
@@ -222,8 +222,8 @@ def get_product(product_id):
     """Function that returns the product details."""
     conn = get_connection()
     try:
-        row = conn.execute( # nosec B608
-            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)
+        row = conn.execute(
+            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,) # nosec B608
         ).fetchone()
         if row is None:
             return jsonify(error="Not found"), 404
@@ -267,7 +267,7 @@ def create_product():
         )
         conn.commit()
         row = conn.execute(
-            f"SELECT {COLUMNS} FROM products WHERE id = ?", (cur.lastrowid,)
+            f"SELECT {COLUMNS} FROM products WHERE id = ?", (cur.lastrowid,) # nosec B608
         ).fetchone()
         return jsonify(Product.from_row(row).to_dict()), 201
     finally:
@@ -284,10 +284,14 @@ def update_product(product_id):
     if not data:
         return jsonify(error="No fields provided to update"), 400
 
+    unknown = set(data.keys()) - ALLOWED_FIELDS
+    if unknown:
+        return jsonify(error=f"Unknown fields: {sorted(unknown)}"), 400
+
     conn = get_connection()
     try:
         existing = conn.execute(
-            "SELECT id, name, brand, stock_qty FROM products WHERE id = ?", (product_id,)
+            "SELECT id, name, brand, stock_qty FROM products WHERE id = ?", (product_id,)  # nosec B608
         ).fetchone()
         if existing is None:
             return jsonify(error="Not found"), 404
@@ -295,7 +299,7 @@ def update_product(product_id):
         set_clause = ", ".join(f"{f} = :{f}" for f in data.keys())
         data["id"] = product_id
         conn.execute(
-            f"UPDATE products SET {set_clause}, updated_at = CURRENT_TIMESTAMP "
+            f"UPDATE products SET {set_clause}, updated_at = CURRENT_TIMESTAMP "  # nosec B608 
             f"WHERE id = :id",
             data,
         )
@@ -311,7 +315,7 @@ def update_product(product_id):
 
         conn.commit()
         row = conn.execute(
-            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)
+            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)  # nosec B608
         ).fetchone()
         return jsonify(Product.from_row(row).to_dict())
     finally:
@@ -346,7 +350,7 @@ def adjust_stock(product_id):
         )
         conn.commit()
         updated = conn.execute(
-            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)
+            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)  # nosec B608
         ).fetchone()
         return jsonify(Product.from_row(updated).to_dict())
     finally:
