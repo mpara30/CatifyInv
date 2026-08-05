@@ -57,6 +57,42 @@ Every test gets a brand-new, empty SQLite file created in a pytest
 - `test_stock_history.py` — global and per-product history endpoints:
   filtering, ordering, `limit` handling
 
+## CI (GitHub Actions)
+
+```yaml
+- name: Install dependencies
+  run: |
+    pip install -r requirements.txt
+    pip install -r tests/requirements-test.txt
+
+- name: Run tests
+  run: pytest
+
+- name: Check coverage
+  run: |
+    pytest --cov=. --cov-config=tests/.coveragerc \
+           --cov-report=term-missing --cov-fail-under=85
+```
+
+Two things this depends on:
+
+- **`pip install -r tests/requirements-test.txt`** must run before
+  either step -- it now includes `pytest-cov`, which the `--cov` flags
+  need. Without it, `--cov=.` fails immediately with something like
+  `unrecognized arguments: --cov=.`.
+- **`--cov-config=tests/.coveragerc`** -- coverage.py only
+  auto-discovers a `.coveragerc` in your current working directory, and
+  this one lives in `tests/`, so it needs to be pointed at explicitly.
+  It omits `seed.py` (never imported by any test), the `tests/`
+  directory itself, and each module's `if __name__ == "__main__":`
+  guard (never executed under pytest) -- without these, `--cov=.` counts
+  all of that as 0% covered and drags the total down for reasons
+  unrelated to how well `main.py`'s actual routes are tested.
+
+If you'd rather not pass `--cov-config` every time, move `.coveragerc`
+to your repo root instead (coverage.py picks it up there automatically)
+and drop the flag.
+
 ## Pylint
 
 Every test file starts with:

@@ -1,0 +1,14 @@
+[run]
+# --cov=. walks the whole repo. Without these omits, coverage.py counts
+# every .py file it discovers under that path -- including ones no test
+# ever imports -- as 0% covered, which drags the total down for reasons
+# that have nothing to do with how well main.py's routes are tested.
+omit =
+    tests/*
+    seed.py
+    */site-packages/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:

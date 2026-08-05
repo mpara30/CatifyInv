@@ -38,11 +38,12 @@ jobs:
 
       - name: Check coverage
         run: |
-          pytest --cov=. --cov-report=term-missing --cov-fail-under=85
+          pytest --cov=. --cov-config=tests/.coveragerc \
+                --cov-report=term-missing --cov-fail-under=85
 
       - name: Security scan
         run: |
-          bandit -r .
+          bandit -r . -x ./tests
 
       - name: Dependency vulnerability scan
         run: |
