@@ -33,18 +33,17 @@ jobs:
           pylint --fail-under=9.5 $(git ls-files '*.py')
 
       - name: Run tests
-        if: false
         run: |
           pytest
 
       - name: Check coverage
-        if: false
         run: |
-          pytest --cov=. --cov-report=term-missing --cov-fail-under=85
+          pytest --cov=. --cov-config=tests/.coveragerc \
+                --cov-report=term-missing --cov-fail-under=85
 
       - name: Security scan
         run: |
-          bandit -r .
+          bandit -r . -x ./tests
 
       - name: Dependency vulnerability scan
         run: |
