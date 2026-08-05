@@ -10,14 +10,15 @@ from typing import Optional
 
 @dataclass
 class Product:
+    """Class representing a product."""
     id: int
     name: str
     brand: str
     category: str = ''
     flavour: str = ''
     weight: float = 0
-    price: int = 0          # price PER INDIVIDUAL UNIT, in bani (RON subunit) — matches stock_qty's unit
-    units_per_box: Optional[int] = None   # items inside one box (e.g. 12 cans). Used to add a full box at once. None = not sold as a box.
+    price: int = 0          # price PER INDIVIDUAL UNIT — matches stock_qty's unit
+    units_per_box: Optional[int] = None   # Used to add a full box at once. None = not sold as a box.
     stock_qty: int = 0      # ALWAYS individual units on hand (cans/pouches/bags), never a box count
     expiration_date: Optional[date] = None
 
@@ -46,8 +47,9 @@ class Product:
         )
 
     def to_dict(self) -> dict:
+        """Function converting a Product to a dict."""
         d = asdict(self)
         d["expiration_date"] = self.expiration_date.isoformat() if self.expiration_date else None
         d["price_ron"] = round(self.price / 100, 2)
-        d["price_per_unit_ron"] = d["price_ron"]  # explicit alias: this is price PER UNIT, matches stock_qty
+        d["price_per_unit_ron"] = d["price_ron"]
         return d

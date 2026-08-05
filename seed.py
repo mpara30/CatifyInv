@@ -91,6 +91,7 @@ PLACEHOLDER_PRODUCTS = [
 
 
 def seed():
+    """Function used to seed the database."""
     init_db()
     conn = get_connection()
     try:
