@@ -195,6 +195,10 @@ def list_products():
         params.append(args["expiring_before"])
 
     sort = args.get("sort", "name")
+
+    if sort not in SORTABLE_FIELDS:
+        raise ValueError(f"Invalid sort field: {sort}")
+
     if sort not in SORTABLE_FIELDS:
         sort = "name"
     order = "DESC" if args.get("order", "asc").lower() == "desc" else "ASC"
@@ -202,7 +206,7 @@ def list_products():
     sql = f"SELECT {COLUMNS} FROM products"
     if clauses:
         sql += " WHERE " + " AND ".join(clauses)
-    sql += f" ORDER BY {sort} {order}"
+    sql += f" ORDER BY {sort} {order}" # nosec B608
 
     conn = get_connection()
     try:
@@ -218,7 +222,7 @@ def get_product(product_id):
     """Function that returns the product details."""
     conn = get_connection()
     try:
-        row = conn.execute(
+        row = conn.execute( # nosec B608
             f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)
         ).fetchone()
         if row is None:
@@ -236,6 +240,10 @@ def create_product():
     if err:
         return jsonify(error=err), 400
 
+    unknown = set(data.keys()) - ALLOWED_FIELDS
+    if unknown:
+        return jsonify(error=f"Unknown fields: {sorted(unknown)}"), 400
+
     data.setdefault("category", "")
     data.setdefault("flavour", "")
     data.setdefault("weight", 0)
@@ -251,7 +259,7 @@ def create_product():
     conn = get_connection()
     try:
         cur = conn.execute(
-            f"INSERT INTO products ({columns}) VALUES ({placeholders})", data
+            f"INSERT INTO products ({columns}) VALUES ({placeholders})", data  # nosec B608
         )
         log_stock_history(
             conn, cur.lastrowid, data["name"], data["brand"],
@@ -442,4 +450,4 @@ def delete_product(product_id):
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True, port=5000)
+    app.run(port=5000)
