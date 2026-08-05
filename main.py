@@ -195,11 +195,15 @@ def list_products():
         params.append(args["expiring_before"])
 
     sort = args.get("sort", "name")
+
+    if sort not in SORTABLE_FIELDS:
+        raise ValueError(f"Invalid sort field: {sort}")
+
     if sort not in SORTABLE_FIELDS:
         sort = "name"
     order = "DESC" if args.get("order", "asc").lower() == "desc" else "ASC"
 
-    sql = f"SELECT {COLUMNS} FROM products"
+    sql = f"SELECT {COLUMNS} FROM products" # nosec B608
     if clauses:
         sql += " WHERE " + " AND ".join(clauses)
     sql += f" ORDER BY {sort} {order}"
@@ -219,7 +223,7 @@ def get_product(product_id):
     conn = get_connection()
     try:
         row = conn.execute(
-            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)
+            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,) # nosec B608
         ).fetchone()
         if row is None:
             return jsonify(error="Not found"), 404
@@ -236,6 +240,10 @@ def create_product():
     if err:
         return jsonify(error=err), 400
 
+    unknown = set(data.keys()) - ALLOWED_FIELDS
+    if unknown:
+        return jsonify(error=f"Unknown fields: {sorted(unknown)}"), 400
+
     data.setdefault("category", "")
     data.setdefault("flavour", "")
     data.setdefault("weight", 0)
@@ -251,7 +259,7 @@ def create_product():
     conn = get_connection()
     try:
         cur = conn.execute(
-            f"INSERT INTO products ({columns}) VALUES ({placeholders})", data
+            f"INSERT INTO products ({columns}) VALUES ({placeholders})", data  # nosec B608
         )
         log_stock_history(
             conn, cur.lastrowid, data["name"], data["brand"],
@@ -259,7 +267,7 @@ def create_product():
         )
         conn.commit()
         row = conn.execute(
-            f"SELECT {COLUMNS} FROM products WHERE id = ?", (cur.lastrowid,)
+            f"SELECT {COLUMNS} FROM products WHERE id = ?", (cur.lastrowid,) # nosec B608
         ).fetchone()
         return jsonify(Product.from_row(row).to_dict()), 201
     finally:
@@ -276,10 +284,14 @@ def update_product(product_id):
     if not data:
         return jsonify(error="No fields provided to update"), 400
 
+    unknown = set(data.keys()) - ALLOWED_FIELDS
+    if unknown:
+        return jsonify(error=f"Unknown fields: {sorted(unknown)}"), 400
+
     conn = get_connection()
     try:
         existing = conn.execute(
-            "SELECT id, name, brand, stock_qty FROM products WHERE id = ?", (product_id,)
+            "SELECT id, name, brand, stock_qty FROM products WHERE id = ?", (product_id,)  # nosec B608
         ).fetchone()
         if existing is None:
             return jsonify(error="Not found"), 404
@@ -287,7 +299,7 @@ def update_product(product_id):
         set_clause = ", ".join(f"{f} = :{f}" for f in data.keys())
         data["id"] = product_id
         conn.execute(
-            f"UPDATE products SET {set_clause}, updated_at = CURRENT_TIMESTAMP "
+            f"UPDATE products SET {set_clause}, updated_at = CURRENT_TIMESTAMP "  # nosec B608 
             f"WHERE id = :id",
             data,
         )
@@ -303,7 +315,7 @@ def update_product(product_id):
 
         conn.commit()
         row = conn.execute(
-            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)
+            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)  # nosec B608
         ).fetchone()
         return jsonify(Product.from_row(row).to_dict())
     finally:
@@ -338,7 +350,7 @@ def adjust_stock(product_id):
         )
         conn.commit()
         updated = conn.execute(
-            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)
+            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)  # nosec B608
         ).fetchone()
         return jsonify(Product.from_row(updated).to_dict())
     finally:
@@ -442,4 +454,4 @@ def delete_product(product_id):
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True, port=5000)
+    app.run(port=5000)
