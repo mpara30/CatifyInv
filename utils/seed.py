@@ -7,7 +7,7 @@ rows first.
 Usage:
     python seed.py
 """
-from database import get_connection, init_db
+from utils.database import get_connection, init_db
 
 PLACEHOLDER_PRODUCTS = [
     dict(

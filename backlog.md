@@ -79,7 +79,7 @@ All write endpoints (`POST`/`PUT`/`DELETE`/`adjust-stock`) are currently open to
 SQLite is fine for single-user local use but won't hold up well under concurrent writes from multiple users. Migrate to a server-based database when that becomes a real requirement.
 
 **Acceptance Criteria:**
-- [ ] Introduce an ORM or query layer that isn't SQLite-specific (or write a Postgres-specific `database.py`)
+- [ ] Introduce an ORM or query layer that isn't SQLite-specific (or write a Postgres-specific `utils/database.py`)
 - [ ] Migration script to move existing SQLite data to the new database
 - [ ] Update `requirements.txt` and README setup instructions
 - [ ] Confirm all existing API behavior (filters, sorting, stats) still works against the new database

@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # pylint: disab
 
 import pytest  # noqa: E402  pylint: disable=wrong-import-position
 
-import database  # noqa: E402  pylint: disable=wrong-import-position
+from utils import database
 import main as main_module  # noqa: E402  pylint: disable=wrong-import-position
 
 

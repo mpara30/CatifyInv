@@ -34,11 +34,9 @@ from datetime import datetime, timedelta
 
 from flask import Flask, request, jsonify
 
-from database import get_connection, init_db
+from utils.database import get_connection, init_db
 from models import Product
-
-import subprocess
-import sys
+from utils.quality_checks import run_quality_checks
 
 
 app = Flask(__name__, static_folder="frontend", static_url_path="")
@@ -454,29 +452,6 @@ def delete_product(product_id):
         return "", 204
     finally:
         conn.close()
-
-def run_quality_checks():
-    print("Running tests...")
-
-    result = subprocess.run(
-        ["pytest", "--cov=.", "--cov-fail-under=85"],
-        check=False,
-    )
-
-    if result.returncode != 0:
-        print("Tests or coverage failed.")
-        sys.exit(1)
-
-    print("Running pylint...")
-
-    result = subprocess.run(
-        ["pylint", "--ignore=.venv", "--fail-under=9.5", "."],
-        check=False,
-    )
-
-    if result.returncode != 0:
-        print("Pylint score is below 9.5.")
-        sys.exit(1)
 
 if __name__ == "__main__":
     run_quality_checks()
