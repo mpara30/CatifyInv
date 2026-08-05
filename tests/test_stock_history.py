@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring,missing-function-docstring,redefined-outer-name
 def test_product_history_empty_for_untouched_product(client, make_product):
     pid = make_product()
     resp = client.get(f"/api/products/{pid}/history")

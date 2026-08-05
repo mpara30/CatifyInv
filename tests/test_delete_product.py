@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring,missing-function-docstring,redefined-outer-name
 def test_delete_success_returns_204(client, make_product):
     pid = make_product()
     resp = client.delete(f"/api/products/{pid}")

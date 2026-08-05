@@ -24,12 +24,14 @@ Then, from `cat_food_db/`:
 ```bash
 pip install -r requirements.txt
 pip install -r tests/requirements-test.txt
-python -m pytest
+pytest
 ```
 
-Use `python -m pytest` rather than bare `pytest` -- it puts your current
-directory (the project root) on `sys.path`, which is how `conftest.py`
-resolves `import database` / `import main` without a `sys.path` hack.
+This works whether you run it from the project root or from inside
+`tests/` -- `tests/pytest.ini` sets `pythonpath = ..`, which tells pytest
+itself to put the project root on `sys.path` (pytest >= 7.0 required,
+already pinned in `requirements-test.txt`). No `sys.path` hacks, no
+`__init__.py` needed in `tests/`.
 
 ## How isolation works
 
@@ -55,7 +57,39 @@ Every test gets a brand-new, empty SQLite file created in a pytest
 - `test_stock_history.py` — global and per-product history endpoints:
   filtering, ordering, `limit` handling
 
-## A bug this suite surfaces
+## Pylint
+
+Every test file starts with:
+
+```python
+# pylint: disable=missing-module-docstring,missing-function-docstring,redefined-outer-name
+```
+
+This is a **file-scoped inline disable**, so it applies no matter what
+directory you run pylint from -- unlike `tests/.pylintrc`, which pylint
+only picks up if you run it *from inside* `tests/` or pass
+`--rcfile=tests/.pylintrc` explicitly (pylint's config search starts at
+your current working directory, not at the files being linted). Both are
+included: the inline comments are what actually take effect in the
+common case (`pylint tests/` from the project root); `.pylintrc` is
+there if you'd rather point `--rcfile` at it instead of touching every
+file.
+
+Why these three, specifically, and only in `tests/`:
+
+- **missing-module-docstring / missing-function-docstring** -- test
+  names are written to double as the docstring
+  (`test_adjust_stock_clamps_at_zero` doesn't need a second sentence
+  saying the same thing). A handful of tests that need extra context
+  (e.g. the sort-injection regression test) already have a real
+  docstring explaining why.
+- **redefined-outer-name** -- pylint doesn't understand pytest's
+  fixture injection: `def client(app):` intentionally takes a
+  same-named fixture as a parameter; that's how fixtures compose, not
+  accidental shadowing.
+
+These are not disabled anywhere in your application code, only in this
+test directory.
 
 `GET /api/products` with an invalid `sort` value currently hits:
 

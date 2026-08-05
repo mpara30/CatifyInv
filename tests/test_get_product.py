@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring,missing-function-docstring,redefined-outer-name
 def test_get_existing_product(client, make_product):
     pid = make_product(name="Salmon Pate", brand="Purrfect Bowl", price=599)
     resp = client.get(f"/api/products/{pid}")

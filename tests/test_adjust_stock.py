@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring,missing-function-docstring,redefined-outer-name
 def test_adjust_stock_positive_delta(client, make_product):
     pid = make_product(stock_qty=5)
     resp = client.post(f"/api/products/{pid}/adjust-stock", json={"delta": 3})

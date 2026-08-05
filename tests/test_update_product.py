@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring,missing-function-docstring,redefined-outer-name
 def test_update_partial_field_success(client, make_product):
     pid = make_product(name="Old Name", stock_qty=5)
     resp = client.put(f"/api/products/{pid}", json={"name": "New Name"})

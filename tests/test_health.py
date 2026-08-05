@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring,missing-function-docstring,redefined-outer-name
 def test_health_returns_ok(client):
     resp = client.get("/api/health")
     assert resp.status_code == 200

@@ -1,15 +1,16 @@
+# pylint: disable=missing-module-docstring,missing-function-docstring,redefined-outer-name
 """Shared pytest fixtures for the CatifyInv API test suite.
 
 Drop this `tests/` directory into the CatifyInv project root (next to
-main.py, database.py, models.py), then run from that project root:
+main.py, database.py, models.py), then:
 
     pip install pytest
-    python -m pytest
+    pytest
 
-Use `python -m pytest`, not bare `pytest` -- `python -m` puts the current
-directory (your project root) on sys.path so `import database` / `import
-main` resolve, without needing a sys.path hack here or an __init__.py in
-tests/.
+`pytest.ini` (in this directory) sets `pythonpath = ..`, which puts the
+project root on sys.path automatically -- this works no matter which
+directory you invoke pytest from, and with either `pytest` or
+`python -m pytest`.
 
 Each test gets its own throwaway SQLite file (via tmp_path), so tests
 never touch your real cat_food.db and can run in any order or in
