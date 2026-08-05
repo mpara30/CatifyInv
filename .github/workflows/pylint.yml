@@ -28,9 +28,9 @@ jobs:
           pip install -r requirements.txt
           pip install pylint pytest pytest-cov bandit pip-audit
 
-      - name: Run pylint
+      - name: Analyse code with pylint
         run: |
-          pylint $(git ls-files '*.py')
+          pylint --fail-under=9.5 $(git ls-files '*.py')
 
       - name: Run tests
         run: |
