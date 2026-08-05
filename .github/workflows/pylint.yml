@@ -33,12 +33,10 @@ jobs:
           pylint --fail-under=9.5 $(git ls-files '*.py')
 
       - name: Run tests
-        if: false
         run: |
           pytest
 
       - name: Check coverage
-        if: false
         run: |
           pytest --cov=. --cov-report=term-missing --cov-fail-under=85
 
