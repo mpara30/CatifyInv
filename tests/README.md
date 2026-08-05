@@ -24,8 +24,12 @@ Then, from `cat_food_db/`:
 ```bash
 pip install -r requirements.txt
 pip install -r tests/requirements-test.txt
-pytest
+python -m pytest
 ```
+
+Use `python -m pytest` rather than bare `pytest` -- it puts your current
+directory (the project root) on `sys.path`, which is how `conftest.py`
+resolves `import database` / `import main` without a `sys.path` hack.
 
 ## How isolation works
 

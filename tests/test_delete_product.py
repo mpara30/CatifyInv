@@ -38,7 +38,7 @@ def test_delete_history_survives_product_deletion(client, make_product):
     pid = make_product(name="Doomed", brand="Acme", stock_qty=1)
     client.delete(f"/api/products/{pid}")
 
-    resp = client.get(f"/api/stock-history?q=Doomed")
+    resp = client.get("/api/stock-history?q=Doomed")
     assert resp.status_code == 200
     entries = resp.get_json()
     assert any(e["source"] == "delete" and e["product_name"] == "Doomed" for e in entries)
@@ -48,6 +48,6 @@ def test_delete_zero_stock_product_still_logs(client, make_product):
     """delete uses skip_if_unchanged=False, so a 0 -> 0 delete is logged too."""
     pid = make_product(stock_qty=0)
     client.delete(f"/api/products/{pid}")
-    resp = client.get(f"/api/stock-history")
+    resp = client.get("/api/stock-history")
     entries = resp.get_json()
     assert any(e["product_id"] == pid and e["source"] == "delete" for e in entries)

@@ -67,7 +67,7 @@ def test_stock_history_invalid_source_is_ignored_not_errored(client, make_produc
 
 def test_stock_history_limit_is_respected(client, make_product):
     pid = make_product(stock_qty=0)
-    for i in range(5):
+    for _ in range(5):
         client.post(f"/api/products/{pid}/adjust-stock", json={"delta": 1})
 
     resp = client.get("/api/stock-history?limit=2")
@@ -82,6 +82,6 @@ def test_stock_history_limit_invalid_falls_back_to_default(client, make_product)
     assert resp.status_code == 200  # falls back to default 200, doesn't error
 
 
-def test_stock_history_limit_clamped_to_max_1000(client, make_product):
+def test_stock_history_limit_clamped_to_max_1000(client):
     resp = client.get("/api/stock-history?limit=999999")
     assert resp.status_code == 200  # clamped server-side, no error

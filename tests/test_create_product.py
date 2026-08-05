@@ -98,7 +98,7 @@ def test_create_empty_body_400(client):
     assert resp.status_code == 400
 
 
-def test_create_logs_stock_history_create_entry(client, valid_payload, db_conn):
+def test_create_logs_stock_history_create_entry(client, valid_payload):
     created = client.post("/api/products", json=valid_payload).get_json()
     history = client.get(f"/api/products/{created['id']}/history").get_json()
     assert len(history) == 1

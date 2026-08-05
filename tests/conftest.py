@@ -1,22 +1,20 @@
-"""
-conftest.py
-Shared pytest fixtures for the CatifyInv API test suite.
+"""Shared pytest fixtures for the CatifyInv API test suite.
 
 Drop this `tests/` directory into the CatifyInv project root (next to
-main.py, database.py, models.py), then run:
+main.py, database.py, models.py), then run from that project root:
 
     pip install pytest
-    pytest
+    python -m pytest
+
+Use `python -m pytest`, not bare `pytest` -- `python -m` puts the current
+directory (your project root) on sys.path so `import database` / `import
+main` resolve, without needing a sys.path hack here or an __init__.py in
+tests/.
 
 Each test gets its own throwaway SQLite file (via tmp_path), so tests
 never touch your real cat_food.db and can run in any order or in
 parallel.
 """
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 import pytest
 
 import database
@@ -34,13 +32,13 @@ def app(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def client(app):
+def client(app):  # pylint: disable=redefined-outer-name
     """Flask test client wired to the isolated test DB."""
     return app.test_client()
 
 
 @pytest.fixture()
-def db_conn(app):
+def db_conn(app):  # pylint: disable=redefined-outer-name
     """Direct DB connection against the same test DB, for setup/assertions
     that intentionally bypass the API (e.g. seeding fixtures, checking
     stock_history rows the API doesn't expose)."""
@@ -49,23 +47,23 @@ def db_conn(app):
     conn.close()
 
 
-DEFAULT_PRODUCT = dict(
-    name="Test Kibble",
-    brand="TestBrand",
-    category="dry",
-    flavour="chicken",
-    weight=1000,
-    price=1000,
-    units_per_box=None,
-    stock_qty=5,
-    expiration_date=None,
-)
+DEFAULT_PRODUCT = {
+    "name": "Test Kibble",
+    "brand": "TestBrand",
+    "category": "dry",
+    "flavour": "chicken",
+    "weight": 1000,
+    "price": 1000,
+    "units_per_box": None,
+    "stock_qty": 5,
+    "expiration_date": None,
+}
 
 
 def insert_product(conn, **overrides):
     """Insert a product directly (bypassing the API/validation) and return
     its id. Useful for setting up list/filter/sort fixtures quickly."""
-    product = dict(DEFAULT_PRODUCT, **overrides)
+    product = {**DEFAULT_PRODUCT, **overrides}
     cur = conn.execute(
         """
         INSERT INTO products (
@@ -83,7 +81,7 @@ def insert_product(conn, **overrides):
 
 
 @pytest.fixture()
-def make_product(db_conn):
+def make_product(db_conn):  # pylint: disable=redefined-outer-name
     """Factory fixture: make_product(name="...", stock_qty=0, ...) -> id"""
 
     def _make(**overrides):
