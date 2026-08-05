@@ -47,9 +47,10 @@ ALLOWED_FIELDS = {
 SORTABLE_FIELDS = {"name", "brand", "price", "stock_qty", "expiration_date"}
 
 # Explicit column order matches Product.from_row's expectations.
-COLUMNS = "id, name, brand, category, flavour, weight, price, units_per_box, stock_qty, expiration_date"
+COLUMNS =\
+    "id, name, brand, category, flavour, weight, price, units_per_box, stock_qty, expiration_date"
 
-LOW_STOCK_THRESHOLD = 2    # stock_qty at/below this (but > 0) counts as "running low" — tuned for home quantities, not shop stock
+LOW_STOCK_THRESHOLD = 2    # stock_qty at/below this (but > 0) counts as "running low"
 EXPIRING_SOON_DAYS = 30    # expiration_date within this many days counts as "expiring soon"
 
 
@@ -101,11 +102,13 @@ def log_stock_history(conn, product_id, product_name, product_brand,
 
 @app.route("/")
 def index():
+    """Function that returns the index page."""
     return app.send_static_file("index.html")
 
 
 @app.route("/api/health", methods=["GET"])
 def health():
+    """Function that returns the health status."""
     return jsonify(status="ok")
 
 
@@ -155,6 +158,7 @@ def stats():
 
 @app.route("/api/products", methods=["GET"])
 def list_products():
+    """Function that returns the list of products."""
     args = request.args
     clauses = []
     params = []
@@ -211,6 +215,7 @@ def list_products():
 
 @app.route("/api/products/<int:product_id>", methods=["GET"])
 def get_product(product_id):
+    """Function that returns the product details."""
     conn = get_connection()
     try:
         row = conn.execute(
@@ -225,6 +230,7 @@ def get_product(product_id):
 
 @app.route("/api/products", methods=["POST"])
 def create_product():
+    """Function that creates a new product."""
     data = request.get_json(silent=True) or {}
     err = validate_payload(data, partial=False)
     if err:
@@ -262,6 +268,7 @@ def create_product():
 
 @app.route("/api/products/<int:product_id>", methods=["PUT", "PATCH"])
 def update_product(product_id):
+    """Function that updates a product."""
     data = request.get_json(silent=True) or {}
     err = validate_payload(data, partial=True)
     if err:
@@ -340,6 +347,7 @@ def adjust_stock(product_id):
 
 @app.route("/history")
 def history_page():
+    """Function that displays the history page."""
     return app.send_static_file("history.html")
 
 
@@ -391,6 +399,7 @@ def all_stock_history():
 
 @app.route("/api/products/<int:product_id>/history", methods=["GET"])
 def product_history(product_id):
+    """Function that displays the history of a product."""
     conn = get_connection()
     try:
         existing = conn.execute(
@@ -411,6 +420,7 @@ def product_history(product_id):
 
 @app.route("/api/products/<int:product_id>", methods=["DELETE"])
 def delete_product(product_id):
+    """Function that deletes a product."""
     conn = get_connection()
     try:
         existing = conn.execute(

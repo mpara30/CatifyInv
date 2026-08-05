@@ -18,7 +18,7 @@ class Product:
     flavour: str = ''
     weight: float = 0
     price: int = 0          # price PER INDIVIDUAL UNIT — matches stock_qty's unit
-    units_per_box: Optional[int] = None   # Used to add a full box at once. None = not sold as a box.
+    units_per_box: Optional[int] = None  # Used to add a full box at once. None = not sold as a box.
     stock_qty: int = 0      # ALWAYS individual units on hand (cans/pouches/bags), never a box count
     expiration_date: Optional[date] = None
 
