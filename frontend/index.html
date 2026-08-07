@@ -34,11 +34,16 @@
     </div>
   </div>
   <button class="btn btn-primary" id="openAddBtn">+ Add food</button>
+  <button class="btn btn-ghost" id="openCatsBtn">🐱 Cats</button>
   <a class="btn btn-ghost" href="/history">History</a>
 </header>
 
 <section class="toolbar">
   <input type="search" id="searchInput" placeholder="Search name, brand, flavour…" class="input search-input">
+
+  <select id="catFilter" class="input select">
+    <option value="">All cats</option>
+  </select>
 
   <select id="categoryFilter" class="input select">
     <option value="">All categories</option>
@@ -149,6 +154,13 @@
         <input type="date" id="fExpiration">
       </div>
 
+      <div class="form-row">
+        <label>Which cat(s) is this for? <span class="label-hint">(leave all unchecked for every cat)</span></label>
+        <div id="catCheckboxes" class="cat-checkboxes">
+          <span class="history-empty">No cats added yet — use the 🐱 Cats button to add one.</span>
+        </div>
+      </div>
+
       <p class="form-error hidden" id="formError"></p>
 
       <div id="historySection" class="history-section hidden">
@@ -180,6 +192,33 @@
 </div>
 
 <div class="toast hidden" id="toast"></div>
+
+<!-- Feed: pick which cat modal -->
+<div class="modal-backdrop hidden" id="feedBackdrop">
+  <div class="modal modal-small" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2>Who's eating?</h2>
+      <button class="modal-close" id="closeFeedBtn" aria-label="Close">&times;</button>
+    </div>
+    <ul class="cats-list" id="feedCatsList"></ul>
+  </div>
+</div>
+
+<!-- Manage cats modal -->
+<div class="modal-backdrop hidden" id="catsBackdrop">
+  <div class="modal modal-small" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2>Your cats</h2>
+      <button class="modal-close" id="closeCatsBtn" aria-label="Close">&times;</button>
+    </div>
+    <form id="addCatForm" class="add-cat-form">
+      <input type="text" id="fCatName" placeholder="Cat's name" required>
+      <button type="submit" class="btn btn-primary">Add</button>
+    </form>
+    <p class="form-error hidden" id="catFormError"></p>
+    <ul class="cats-list" id="catsList"></ul>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>

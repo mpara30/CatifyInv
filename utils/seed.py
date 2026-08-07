@@ -90,6 +90,16 @@ PLACEHOLDER_PRODUCTS = [
 ]
 
 
+PLACEHOLDER_CATS = ["Luna", "Tom"]
+
+# Maps product name -> list of cat names it's tagged to. Anything not listed
+# here stays untagged, i.e. "all cats" (the default).
+PLACEHOLDER_PRODUCT_CATS = {
+    "Kitten Growth Formula": ["Luna"],
+    "Senior Sensitive Digestion": ["Tom"],
+}
+
+
 def seed():
     """Function used to seed the database."""
     init_db()
@@ -108,8 +118,30 @@ def seed():
             """,
             PLACEHOLDER_PRODUCTS,
         )
+
+        conn.execute("DELETE FROM product_cats")
+        conn.execute("DELETE FROM cats")
+        conn.executemany(
+            "INSERT INTO cats (name) VALUES (?)",
+            [(name,) for name in PLACEHOLDER_CATS],
+        )
+
+        name_to_product_id = dict(
+            conn.execute("SELECT name, id FROM products").fetchall()
+        )
+        name_to_cat_id = dict(
+            conn.execute("SELECT name, id FROM cats").fetchall()
+        )
+        for product_name, cat_names in PLACEHOLDER_PRODUCT_CATS.items():
+            product_id = name_to_product_id[product_name]
+            for cat_name in cat_names:
+                conn.execute(
+                    "INSERT INTO product_cats (product_id, cat_id) VALUES (?, ?)",
+                    (product_id, name_to_cat_id[cat_name]),
+                )
+
         conn.commit()
-        print(f"Seeded {len(PLACEHOLDER_PRODUCTS)} products.")
+        print(f"Seeded {len(PLACEHOLDER_PRODUCTS)} products and {len(PLACEHOLDER_CATS)} cats.")
     finally:
         conn.close()
 

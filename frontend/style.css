@@ -525,6 +525,100 @@ main { padding: 24px 32px 60px; }
   font-family: var(--font-body);
 }
 
+.cat-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.cat-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.cat-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.add-cat-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.add-cat-form input {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.cats-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.cat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.cat-row-select {
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.cat-row-select:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.cat-row-feed-icon {
+  opacity: 0.5;
+}
+.cat-row-select:hover .cat-row-feed-icon {
+  opacity: 1;
+}
+
+.cat-row-delete {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 6px;
+}
+.cat-row-delete:hover { text-decoration: underline; }
+
+.card-cats {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+  font-style: italic;
+}
+
 /* ---------- History page ledger table ---------- */
 
 .history-table-wrap {
@@ -570,6 +664,7 @@ main { padding: 24px 32px 60px; }
 
 .history-table .cell-product { font-weight: 600; }
 .history-table .cell-brand { color: var(--ink-soft); }
+.history-table .cell-cat { color: var(--ink-soft); font-style: italic; }
 
 .history-table .cell-change {
   font-family: var(--font-mono);
@@ -599,12 +694,13 @@ main { padding: 24px 32px 60px; }
 .source-pill.edit { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
 .source-pill.create { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 .source-pill.delete { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+.source-pill.feed { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 
 @media (max-width: 640px) {
   .history-table { font-size: 12.5px; }
   .history-table thead th, .history-table tbody td { padding: 9px 10px; }
-  .cell-brand { display: none; }
-  .history-table thead th:nth-child(3) { display: none; }
+  .cell-brand, .cell-cat { display: none; }
+  .history-table thead th:nth-child(3), .history-table thead th:nth-child(4) { display: none; }
 }
 
 /* ---------- Toast ---------- */
