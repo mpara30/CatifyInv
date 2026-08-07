@@ -43,6 +43,7 @@ const SOURCE_LABELS = {
   edit: "Edited",
   adjust: "Quick +/-",
   delete: "Removed",
+  feed: "Fed",
 };
 
 function renderTable(entries) {
@@ -64,6 +65,7 @@ function renderTable(entries) {
           <td class="cell-when">${formatWhen(h.created_at)}</td>
           <td class="cell-product">${escapeHtml(h.product_name)}</td>
           <td class="cell-brand">${escapeHtml(h.product_brand)}</td>
+          <td class="cell-cat">${h.cat_name ? escapeHtml(h.cat_name) : "—"}</td>
           <td class="cell-change">${h.previous_qty} &rarr; ${h.new_qty}</td>
           <td class="cell-qty ${qtyCls}">${sign}${h.delta}</td>
           <td><span class="source-pill ${h.source}">${label}</span></td>

@@ -13,6 +13,9 @@ Endpoints:
     POST   /api/products/<id>/adjust-stock   bump stock_qty by a delta
     GET    /api/products/<id>/history        stock change history for a product
     GET    /api/stock-history                stock change history across all products
+    GET    /api/cats                list cats
+    POST   /api/cats                create a cat ({"name": "..."})
+    DELETE /api/cats/<id>           delete a cat (also un-tags it from any products)
     GET    /                        serves the frontend (frontend/index.html)
 
 Filters for GET /api/products (all optional, combine with &):
@@ -23,13 +26,20 @@ Filters for GET /api/products (all optional, combine with &):
     in_stock         true -> stock_qty > 0 | false -> stock_qty = 0
     max_price        maximum price per unit, in bani (RON subunit)
     expiring_before  ISO date -> only products expiring on/before this date
+    cat_id           only products tagged for this cat, PLUS any "all cats" products
+                      (a product with no cat tags at all is implicitly for every cat)
     sort             name | brand | price | stock_qty | expiration_date
     order            asc | desc (default asc)
+
+A product's cats are managed via the "cat_ids" field on create/update (a list
+of cat ids, or omitted/empty for "all cats"). Every product response includes
+"cat_ids" and "cats" (id + name) regardless of which endpoint returned it.
 
 Run with:
     python main.py
 Then visit http://127.0.0.1:5000/
 """
+import sqlite3
 from datetime import datetime, timedelta
 
 from flask import Flask, request, jsonify
@@ -87,19 +97,76 @@ def validate_payload(data, partial=False):
 
 
 def log_stock_history(conn, product_id, product_name, product_brand,
-                       previous_qty, new_qty, source, skip_if_unchanged=True):
-    """Insert a stock_history row, snapshotting the product's name/brand so
-    the row stays readable even after the product itself is deleted.
+                       previous_qty, new_qty, source, skip_if_unchanged=True,
+                       cat_id=None, cat_name=None):
+    """Insert a stock_history row, snapshotting the product's name/brand (and
+    the cat's name, if one was specified) so the row stays readable even
+    after the product or cat itself is deleted.
     By default, no-op edits (previous_qty == new_qty) aren't logged."""
     if skip_if_unchanged and previous_qty == new_qty:
         return
     conn.execute(
         "INSERT INTO stock_history "
-        "(product_id, product_name, product_brand, previous_qty, new_qty, delta, source) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (product_id, product_name, product_brand, previous_qty, new_qty,
-         new_qty - previous_qty, source),
+        "(product_id, product_name, product_brand, cat_id, cat_name, "
+        "previous_qty, new_qty, delta, source) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (product_id, product_name, product_brand, cat_id, cat_name,
+         previous_qty, new_qty, new_qty - previous_qty, source),
     )
+
+
+def extract_cat_ids(data):
+    """Pop and validate cat_ids from a product payload. Not a real products
+    column -- it's a separate relation -- so it never reaches
+    validate_payload or the ALLOWED_FIELDS check.
+
+    Returns (cat_ids, error). cat_ids is None if the field wasn't present at
+    all (leave associations untouched), or a list (possibly empty) to apply.
+    """
+    if "cat_ids" not in data:
+        return None, None
+    cat_ids = data.pop("cat_ids")
+    if cat_ids is None:
+        return [], None
+    if not isinstance(cat_ids, list) or not all(isinstance(c, int) for c in cat_ids):
+        return None, "cat_ids must be a list of integers, or omitted/null for all cats"
+    return cat_ids, None
+
+
+def set_product_cats(conn, product_id, cat_ids):
+    """Replace a product's cat associations entirely. Empty list means
+    'all cats'. Raises sqlite3.IntegrityError if a cat_id doesn't exist."""
+    conn.execute("DELETE FROM product_cats WHERE product_id = ?", (product_id,))
+    if cat_ids:
+        conn.executemany(
+            "INSERT INTO product_cats (product_id, cat_id) VALUES (?, ?)",
+            [(product_id, cid) for cid in cat_ids],
+        )
+
+
+def attach_cat_info(conn, product_dicts):
+    """Adds 'cat_ids' (list of ints) and 'cats' (list of {id, name}) to each
+    product dict in place. No associations at all means 'all cats'."""
+    if not product_dicts:
+        return product_dicts
+    ids = [p["id"] for p in product_dicts]
+    placeholders = ",".join("?" * len(ids))
+    rows = conn.execute(
+        f"SELECT pc.product_id, c.id AS cat_id, c.name AS cat_name "  # nosec B608
+        f"FROM product_cats pc JOIN cats c ON c.id = pc.cat_id "
+        f"WHERE pc.product_id IN ({placeholders})",
+        ids,
+    ).fetchall()
+    by_product = {}
+    for r in rows:
+        by_product.setdefault(r["product_id"], []).append(
+            {"id": r["cat_id"], "name": r["cat_name"]}
+        )
+    for p in product_dicts:
+        cats = by_product.get(p["id"], [])
+        p["cats"] = cats
+        p["cat_ids"] = [c["id"] for c in cats]
+    return product_dicts
 
 
 @app.route("/")
@@ -112,6 +179,53 @@ def index():
 def health():
     """Function that returns the health status."""
     return jsonify(status="ok")
+
+
+@app.route("/api/cats", methods=["GET"])
+def list_cats():
+    """Function that returns the list of cats."""
+    conn = get_connection()
+    try:
+        rows = conn.execute("SELECT id, name FROM cats ORDER BY name").fetchall()
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
+
+
+@app.route("/api/cats", methods=["POST"])
+def create_cat():
+    """Function that creates a new cat."""
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify(error="name is required"), 400
+
+    conn = get_connection()
+    try:
+        try:
+            cur = conn.execute("INSERT INTO cats (name) VALUES (?)", (name,))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            return jsonify(error=f"A cat named '{name}' already exists"), 409
+        row = conn.execute("SELECT id, name FROM cats WHERE id = ?", (cur.lastrowid,)).fetchone()
+        return jsonify(dict(row)), 201
+    finally:
+        conn.close()
+
+
+@app.route("/api/cats/<int:cat_id>", methods=["DELETE"])
+def delete_cat(cat_id):
+    """Function that deletes a cat."""
+    conn = get_connection()
+    try:
+        existing = conn.execute("SELECT id FROM cats WHERE id = ?", (cat_id,)).fetchone()
+        if existing is None:
+            return jsonify(error="Not found"), 404
+        conn.execute("DELETE FROM cats WHERE id = ?", (cat_id,))  # cascades product_cats rows
+        conn.commit()
+        return "", 204
+    finally:
+        conn.close()
 
 
 @app.route("/api/stats", methods=["GET"])
@@ -196,6 +310,18 @@ def list_products():
         clauses.append("expiration_date IS NOT NULL AND expiration_date <= ?")
         params.append(args["expiring_before"])
 
+    if args.get("cat_id"):
+        try:
+            cat_id_val = int(args["cat_id"])
+            clauses.append(
+                "(EXISTS (SELECT 1 FROM product_cats pc "
+                "WHERE pc.product_id = products.id AND pc.cat_id = ?) "
+                "OR NOT EXISTS (SELECT 1 FROM product_cats pc WHERE pc.product_id = products.id))"
+            )
+            params.append(cat_id_val)
+        except ValueError:
+            pass
+
     sort = args.get("sort", "name")
 
     if sort not in SORTABLE_FIELDS:
@@ -214,6 +340,7 @@ def list_products():
     try:
         rows = conn.execute(sql, params).fetchall()
         products = [Product.from_row(r).to_dict() for r in rows]
+        attach_cat_info(conn, products)
         return jsonify(products)
     finally:
         conn.close()
@@ -229,7 +356,9 @@ def get_product(product_id):
         ).fetchone()
         if row is None:
             return jsonify(error="Not found"), 404
-        return jsonify(Product.from_row(row).to_dict())
+        product = Product.from_row(row).to_dict()
+        attach_cat_info(conn, [product])
+        return jsonify(product)
     finally:
         conn.close()
 
@@ -238,6 +367,10 @@ def get_product(product_id):
 def create_product():
     """Function that creates a new product."""
     data = request.get_json(silent=True) or {}
+    cat_ids, cat_err = extract_cat_ids(data)
+    if cat_err:
+        return jsonify(error=cat_err), 400
+
     err = validate_payload(data, partial=False)
     if err:
         return jsonify(error=err), 400
@@ -267,11 +400,19 @@ def create_product():
             conn, cur.lastrowid, data["name"], data["brand"],
             0, data["stock_qty"], "create", skip_if_unchanged=False,
         )
+        if cat_ids:
+            try:
+                set_product_cats(conn, cur.lastrowid, cat_ids)
+            except sqlite3.IntegrityError:
+                conn.rollback()
+                return jsonify(error="One or more cat_ids don't exist"), 400
         conn.commit()
         row = conn.execute(
             f"SELECT {COLUMNS} FROM products WHERE id = ?", (cur.lastrowid,) # nosec B608
         ).fetchone()
-        return jsonify(Product.from_row(row).to_dict()), 201
+        product = Product.from_row(row).to_dict()
+        attach_cat_info(conn, [product])
+        return jsonify(product), 201
     finally:
         conn.close()
 
@@ -280,10 +421,14 @@ def create_product():
 def update_product(product_id):
     """Function that updates a product."""
     data = request.get_json(silent=True) or {}
+    cat_ids, cat_err = extract_cat_ids(data)
+    if cat_err:
+        return jsonify(error=cat_err), 400
+
     err = validate_payload(data, partial=True)
     if err:
         return jsonify(error=err), 400
-    if not data:
+    if not data and cat_ids is None:
         return jsonify(error="No fields provided to update"), 400
 
     unknown = set(data.keys()) - ALLOWED_FIELDS
@@ -293,18 +438,20 @@ def update_product(product_id):
     conn = get_connection()
     try:
         existing = conn.execute(
-            "SELECT id, name, brand, stock_qty FROM products WHERE id = ?", (product_id,)  # nosec B608
+            "SELECT id, name, brand, stock_qty FROM products WHERE id = ?",  # nosec B608
+            (product_id,),
         ).fetchone()
         if existing is None:
             return jsonify(error="Not found"), 404
 
-        set_clause = ", ".join(f"{f} = :{f}" for f in data.keys())
-        data["id"] = product_id
-        conn.execute(
-            f"UPDATE products SET {set_clause}, updated_at = CURRENT_TIMESTAMP "  # nosec B608 
-            f"WHERE id = :id",
-            data,
-        )
+        if data:
+            set_clause = ", ".join(f"{f} = :{f}" for f in data.keys())
+            data["id"] = product_id
+            conn.execute(
+                f"UPDATE products SET {set_clause}, updated_at = CURRENT_TIMESTAMP "  # nosec B608
+                f"WHERE id = :id",
+                data,
+            )
 
         if "stock_qty" in data:
             # Use the post-edit name/brand if those were changed in this same request.
@@ -315,11 +462,20 @@ def update_product(product_id):
                 existing["stock_qty"], data["stock_qty"], "edit",
             )
 
+        if cat_ids is not None:
+            try:
+                set_product_cats(conn, product_id, cat_ids)
+            except sqlite3.IntegrityError:
+                conn.rollback()
+                return jsonify(error="One or more cat_ids don't exist"), 400
+
         conn.commit()
         row = conn.execute(
             f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)  # nosec B608
         ).fetchone()
-        return jsonify(Product.from_row(row).to_dict())
+        product = Product.from_row(row).to_dict()
+        attach_cat_info(conn, [product])
+        return jsonify(product)
     finally:
         conn.close()
 
@@ -327,11 +483,17 @@ def update_product(product_id):
 @app.route("/api/products/<int:product_id>/adjust-stock", methods=["POST"])
 def adjust_stock(product_id):
     """Bump stock_qty up or down by a delta. Body: {"delta": 1} or {"delta": -1}.
-    Clamps at 0 — never goes negative."""
+    Optionally include {"cat_id": N} to record which cat this feeding was
+    for -- when present, the history entry is logged as a 'feed' event
+    instead of a generic 'adjust'. Clamps at 0 — never goes negative."""
     data = request.get_json(silent=True) or {}
     delta = data.get("delta")
     if not isinstance(delta, int):
         return jsonify(error="delta must be an integer"), 400
+
+    cat_id = data.get("cat_id")
+    if cat_id is not None and not isinstance(cat_id, int):
+        return jsonify(error="cat_id must be an integer, or omitted"), 400
 
     conn = get_connection()
     try:
@@ -341,6 +503,13 @@ def adjust_stock(product_id):
         if row is None:
             return jsonify(error="Not found"), 404
 
+        cat_name = None
+        if cat_id is not None:
+            cat_row = conn.execute("SELECT name FROM cats WHERE id = ?", (cat_id,)).fetchone()
+            if cat_row is None:
+                return jsonify(error="cat_id doesn't exist"), 400
+            cat_name = cat_row["name"]
+
         new_qty = max(0, row["stock_qty"] + delta)
         conn.execute(
             "UPDATE products SET stock_qty = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -348,7 +517,8 @@ def adjust_stock(product_id):
         )
         log_stock_history(
             conn, product_id, row["name"], row["brand"],
-            row["stock_qty"], new_qty, "adjust",
+            row["stock_qty"], new_qty, "feed" if cat_id is not None else "adjust",
+            cat_id=cat_id, cat_name=cat_name,
         )
         conn.commit()
         updated = conn.execute(
@@ -372,7 +542,8 @@ def all_stock_history():
 
     Optional filters:
         q          search by product name or brand
-        source     'create' | 'edit' | 'adjust' | 'delete'
+        source     'create' | 'edit' | 'adjust' | 'delete' | 'feed'
+        cat_id     only 'feed' events logged for this cat
         limit      max rows to return (default 200)
     """
     args = request.args
@@ -384,9 +555,16 @@ def all_stock_history():
         like = f"%{args['q']}%"
         params.extend([like, like])
 
-    if args.get("source") in ("create", "edit", "adjust", "delete"):
+    if args.get("source") in ("create", "edit", "adjust", "delete", "feed"):
         clauses.append("source = ?")
         params.append(args["source"])
+
+    if args.get("cat_id"):
+        try:
+            clauses.append("cat_id = ?")
+            params.append(int(args["cat_id"]))
+        except ValueError:
+            pass
 
     limit = args.get("limit", "200")
     try:
@@ -395,7 +573,7 @@ def all_stock_history():
         limit = 200
 
     sql = (
-        "SELECT id, product_id, product_name, product_brand, "
+        "SELECT id, product_id, product_name, product_brand, cat_id, cat_name, "
         "previous_qty, new_qty, delta, source, created_at FROM stock_history"
     )
     if clauses:
@@ -423,7 +601,7 @@ def product_history(product_id):
             return jsonify(error="Not found"), 404
 
         rows = conn.execute(
-            "SELECT id, previous_qty, new_qty, delta, source, created_at "
+            "SELECT id, cat_id, cat_name, previous_qty, new_qty, delta, source, created_at "
             "FROM stock_history WHERE product_id = ? ORDER BY created_at DESC, id DESC",
             (product_id,),
         ).fetchall()

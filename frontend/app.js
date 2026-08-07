@@ -3,12 +3,15 @@ const API = "/api";
 // ---------- State ----------
 let products = [];
 let deleteTargetId = null;
+let cats = [];
+let catDeleteTargetId = null;
 
 // ---------- Elements ----------
 const grid = document.getElementById("productGrid");
 const emptyState = document.getElementById("emptyState");
 
 const searchInput = document.getElementById("searchInput");
+const catFilter = document.getElementById("catFilter");
 const categoryFilter = document.getElementById("categoryFilter");
 const flavourFilter = document.getElementById("flavourFilter");
 const stockFilter = document.getElementById("stockFilter");
@@ -107,6 +110,7 @@ async function loadStats() {
 function buildQuery() {
   const params = new URLSearchParams();
   if (searchInput.value.trim()) params.set("q", searchInput.value.trim());
+  if (catFilter.value) params.set("cat_id", catFilter.value);
   if (categoryFilter.value) params.set("category", categoryFilter.value);
   if (flavourFilter.value) params.set("flavour", flavourFilter.value);
   if (stockFilter.value) params.set("in_stock", stockFilter.value);
@@ -140,6 +144,48 @@ function populateFilterOptions(items) {
   fill(flavourFilter, flavours);
 }
 
+// ---------- Cats ----------
+async function loadCats() {
+  cats = await apiGet("/cats");
+  populateCatFilter();
+  renderCatCheckboxes();
+}
+
+function populateCatFilter() {
+  const current = catFilter.value;
+  catFilter.querySelectorAll("option[data-dynamic]").forEach((o) => o.remove());
+  cats.forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.name;
+    opt.dataset.dynamic = "true";
+    catFilter.appendChild(opt);
+  });
+  if (cats.some((c) => String(c.id) === current)) catFilter.value = current;
+}
+
+function renderCatCheckboxes(selectedIds) {
+  const selected = new Set(selectedIds || []);
+  const container = document.getElementById("catCheckboxes");
+  if (cats.length === 0) {
+    container.innerHTML = `<span class="history-empty">No cats added yet — use the 🐱 Cats button to add one.</span>`;
+    return;
+  }
+  container.innerHTML = cats
+    .map(
+      (c) => `
+      <label class="cat-checkbox-label">
+        <input type="checkbox" class="cat-checkbox" value="${c.id}" ${selected.has(c.id) ? "checked" : ""}>
+        ${escapeHtml(c.name)}
+      </label>`
+    )
+    .join("");
+}
+
+function getSelectedCatIds() {
+  return Array.from(document.querySelectorAll(".cat-checkbox:checked")).map((cb) => Number(cb.value));
+}
+
 // ---------- Rendering ----------
 function renderProducts(items) {
   grid.innerHTML = "";
@@ -162,6 +208,7 @@ function renderProducts(items) {
       </div>
       <h3 class="card-name">${escapeHtml(p.name)}</h3>
       <p class="card-brand">${escapeHtml(p.brand)}</p>
+      ${p.cats && p.cats.length ? `<p class="card-cats">For: ${p.cats.map((c) => escapeHtml(c.name)).join(", ")}</p>` : ""}
       <div class="card-tags">
         ${p.category ? `<span class="tag">${escapeHtml(p.category)}</span>` : ""}
         ${p.flavour ? `<span class="tag">${escapeHtml(p.flavour)}</span>` : ""}
@@ -209,7 +256,7 @@ async function loadProducts() {
 }
 
 async function loadAll() {
-  await Promise.all([loadProducts(), loadStats()]);
+  await Promise.all([loadProducts(), loadStats(), loadCats()]);
   // populate filter dropdowns from the *unfiltered* catalog once
   if (!loadAll._populated) {
     const all = await apiGet("/products");
@@ -230,20 +277,43 @@ grid.addEventListener("click", async (e) => {
   } else if (action === "delete") {
     openDeleteModal(id);
   } else if (action === "feed") {
-    btn.disabled = true;
-    try {
-      await apiSend(`/products/${id}/adjust-stock`, "POST", { delta: -1 });
-      showToast("Fed! 🐾");
-      await loadAll();
-    } catch (err) {
-      showToast(err.message);
-    }
+    const product = products.find((x) => x.id === id);
+    handleFeedClick(product, btn);
   }
 });
 
+// ---------- Feed: pick which cat, when it matters ----------
+async function feedProduct(id, catId, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const body = { delta: -1 };
+    if (catId != null) body.cat_id = catId;
+    await apiSend(`/products/${id}/adjust-stock`, "POST", body);
+    const cat = catId != null ? cats.find((c) => c.id === catId) : null;
+    showToast(cat ? `Fed ${cat.name}! 🐾` : "Fed! 🐾");
+    await loadAll();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+function handleFeedClick(product, btn) {
+  // Eligible cats: whoever this product is tagged to, or every cat if it's
+  // an "all cats" product. No cats registered at all -> just feed, no ask.
+  const eligible = product.cat_ids && product.cat_ids.length
+    ? product.cats
+    : cats;
+
+  if (eligible.length <= 1) {
+    feedProduct(product.id, eligible.length === 1 ? eligible[0].id : null, btn);
+    return;
+  }
+  openFeedModal(product, eligible);
+}
+
 // ---------- Filters wiring ----------
 searchInput.addEventListener("input", debounce(loadProducts, 250));
-[categoryFilter, flavourFilter, stockFilter, sortSelect].forEach((el) =>
+[catFilter, categoryFilter, flavourFilter, stockFilter, sortSelect].forEach((el) =>
   el.addEventListener("change", loadProducts)
 );
 
@@ -261,6 +331,7 @@ function openAddModal() {
   document.getElementById("fIsBox").checked = false;
   setBoxMode(false);
   document.getElementById("boxSection").classList.remove("hidden");
+  renderCatCheckboxes();
   modalTitle.textContent = "Add food";
   formError.classList.add("hidden");
   document.getElementById("historySection").classList.add("hidden");
@@ -290,6 +361,7 @@ async function openEditModal(id) {
   document.getElementById("pricePerUnitHint").classList.add("hidden");
   document.getElementById("fStock").value = p.stock_qty;
   document.getElementById("fExpiration").value = p.expiration_date || "";
+  renderCatCheckboxes(p.cat_ids);
   modalTitle.textContent = "Edit food";
   formError.classList.add("hidden");
   modalBackdrop.classList.remove("hidden");
@@ -307,6 +379,10 @@ async function openEditModal(id) {
   }
 }
 
+const HISTORY_SOURCE_LABELS = {
+  create: "added", edit: "edited", adjust: "adjusted", delete: "removed", feed: "fed",
+};
+
 function renderHistory(entries) {
   const historyList = document.getElementById("historyList");
   if (entries.length === 0) {
@@ -321,10 +397,12 @@ function renderHistory(entries) {
       const when = new Date(h.created_at + "Z").toLocaleString(undefined, {
         month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
       });
+      const label = HISTORY_SOURCE_LABELS[h.source] || h.source;
+      const catPart = h.cat_name ? ` · ${escapeHtml(h.cat_name)}` : "";
       return `
         <li class="history-row">
           <span>${h.previous_qty} → ${h.new_qty} <span class="history-change ${cls}">(${sign}${h.delta})</span></span>
-          <span class="history-meta">${h.source} · ${when}</span>
+          <span class="history-meta">${label}${catPart} · ${when}</span>
         </li>`;
     })
     .join("");
@@ -443,6 +521,7 @@ productForm.addEventListener("submit", async (e) => {
     units_per_box: unitsPerBox,
     stock_qty: parseInt(document.getElementById("fStock").value || "0", 10),
     expiration_date: document.getElementById("fExpiration").value || null,
+    cat_ids: getSelectedCatIds(),
   };
 
   try {
@@ -492,6 +571,124 @@ confirmDeleteBtn.addEventListener("click", async () => {
     showToast("Product deleted");
     closeDeleteModal();
     await loadAll();
+  } catch (err) {
+    showToast(err.message);
+  }
+});
+
+// ---------- Feed: pick which cat modal ----------
+const feedBackdrop = document.getElementById("feedBackdrop");
+const closeFeedBtn = document.getElementById("closeFeedBtn");
+const feedCatsList = document.getElementById("feedCatsList");
+let feedTargetProduct = null;
+
+function openFeedModal(product, eligibleCats) {
+  feedTargetProduct = product;
+  feedCatsList.innerHTML = eligibleCats
+    .map(
+      (c) => `
+      <li class="cat-row cat-row-select" data-cat-id="${c.id}">
+        <span>${escapeHtml(c.name)}</span>
+        <span class="cat-row-feed-icon">🐾</span>
+      </li>`
+    )
+    .join("");
+  feedBackdrop.classList.remove("hidden");
+}
+
+function closeFeedModal() {
+  feedBackdrop.classList.add("hidden");
+  feedTargetProduct = null;
+}
+
+closeFeedBtn.addEventListener("click", closeFeedModal);
+feedBackdrop.addEventListener("click", (e) => {
+  if (e.target === feedBackdrop) closeFeedModal();
+});
+
+feedCatsList.addEventListener("click", (e) => {
+  const row = e.target.closest("li[data-cat-id]");
+  if (!row || !feedTargetProduct) return;
+  const catId = Number(row.dataset.catId);
+  const productId = feedTargetProduct.id;
+  closeFeedModal();
+  feedProduct(productId, catId, null);
+});
+
+// ---------- Manage cats modal ----------
+const openCatsBtn = document.getElementById("openCatsBtn");
+const catsBackdrop = document.getElementById("catsBackdrop");
+const closeCatsBtn = document.getElementById("closeCatsBtn");
+const addCatForm = document.getElementById("addCatForm");
+const catFormError = document.getElementById("catFormError");
+const catsList = document.getElementById("catsList");
+
+function renderCatsList() {
+  if (cats.length === 0) {
+    catsList.innerHTML = `<li class="history-empty">No cats yet — add one above.</li>`;
+    return;
+  }
+  catsList.innerHTML = cats
+    .map(
+      (c) => `
+      <li class="cat-row">
+        <span>${escapeHtml(c.name)}</span>
+        <button type="button" class="cat-row-delete" data-cat-id="${c.id}">Remove</button>
+      </li>`
+    )
+    .join("");
+}
+
+function openCatsModal() {
+  catFormError.classList.add("hidden");
+  addCatForm.reset();
+  renderCatsList();
+  catsBackdrop.classList.remove("hidden");
+  document.getElementById("fCatName").focus();
+}
+
+function closeCatsModal() {
+  catsBackdrop.classList.add("hidden");
+}
+
+openCatsBtn.addEventListener("click", openCatsModal);
+closeCatsBtn.addEventListener("click", closeCatsModal);
+catsBackdrop.addEventListener("click", (e) => {
+  if (e.target === catsBackdrop) closeCatsModal();
+});
+
+addCatForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  catFormError.classList.add("hidden");
+  const name = document.getElementById("fCatName").value.trim();
+  if (!name) return;
+  try {
+    await apiSend("/cats", "POST", { name });
+    await loadCats();
+    renderCatsList();
+    addCatForm.reset();
+    document.getElementById("fCatName").focus();
+  } catch (err) {
+    catFormError.textContent = err.message;
+    catFormError.classList.remove("hidden");
+  }
+});
+
+catsList.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-cat-id]");
+  if (!btn) return;
+  const catId = Number(btn.dataset.catId);
+  const cat = cats.find((c) => c.id === catId);
+  if (!cat) return;
+  if (!window.confirm(`Remove "${cat.name}"? Foods tagged only to them will become "all cats".`)) {
+    return;
+  }
+  btn.disabled = true;
+  try {
+    await apiDelete(`/cats/${catId}`);
+    await loadCats();
+    renderCatsList();
+    await loadProducts();
   } catch (err) {
     showToast(err.message);
   }
