@@ -84,6 +84,17 @@ def _columns(conn, table):
     return {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}  # nosec B608
 
 
+def _migrate_products(conn):
+    """Older databases predate the units_per_box column. Unlike
+    stock_history's source CHECK constraint, this one is a plain nullable
+    column with no constraint blocking it, so a straight ALTER TABLE
+    ADD COLUMN is enough -- no rebuild needed."""
+    if not _table_exists(conn, "products"):
+        return  # fresh install; CREATE TABLE IF NOT EXISTS above already made the current shape
+    if "units_per_box" not in _columns(conn, "products"):
+        conn.execute("ALTER TABLE products ADD COLUMN units_per_box INTEGER")
+
+
 def _migrate_stock_history(conn):
     """Older databases have a stock_history table from before cat tracking
     was added: no cat_id/cat_name columns, and a CHECK constraint that
@@ -128,6 +139,7 @@ def init_db():
     conn = get_connection()
     try:
         conn.executescript(SCHEMA)
+        _migrate_products(conn)
         _migrate_stock_history(conn)
         conn.commit()
     finally:
