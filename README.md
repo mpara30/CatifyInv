@@ -22,7 +22,7 @@ cat_food_db/
 ├── frontend/
 │   ├── index.html
 │   ├── style.css
-│   └── app.js
+│   └── catify.js
 └── README.md
 ```
 
