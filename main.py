@@ -639,6 +639,11 @@ def history_page():
     """Function that displays the history page."""
     return app.send_static_file("history.html")
 
+@app.route("/pantry")
+def pantry_page():
+    """Function that displays the pantry (stock) page."""
+    return app.send_static_file("pantry.html")
+
 
 @app.route("/api/stock-history", methods=["GET"])
 def all_stock_history():

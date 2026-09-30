@@ -1,86 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CatifyInv — Activity</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CatifyInv – History</title>
+<link rel="stylesheet" href="/catify.css">
 </head>
-<body>
-
-<header class="topbar">
-  <div class="topbar-left">
-    <p class="eyebrow">ACTIVITY</p>
-    <h1>What's Changed</h1>
-  </div>
-  <a class="btn btn-ghost" href="/">&larr; Back to pantry</a>
+<body data-page="history">
+<header>
+  <div><div class="eye" id="eye"></div><div class="brand">CatifyInv</div></div>
+  <nav><a data-p="home" href="/">Home</a><a data-p="pantry" href="/pantry">Pantry</a><a data-p="history" href="/history">History</a></nav>
 </header>
-
-<section class="toolbar">
-  <input type="search" id="searchInput" placeholder="Search product or brand…" class="input search-input">
-
-  <select id="sourceFilter" class="input select">
-    <option value="">All change types</option>
-    <option value="create">Added</option>
-    <option value="feed">Fed</option>
-    <option value="adjust">Quick +/-</option>
-    <option value="edit">Edited</option>
-    <option value="restock">Restocked</option>
-    <option value="delete">Removed</option>
-  </select>
-</section>
-
 <main>
-  <section class="monthly">
-    <div class="monthly-head">
-      <h2 class="monthly-title">Month by month</h2>
-      <select id="monthlyCat" class="input select">
-        <option value="">All cats</option>
-      </select>
-    </div>
-    <div class="history-table-wrap">
-      <table class="history-table" id="monthlyTable">
-        <thead>
-          <tr>
-            <th>Month</th>
-            <th>Feedings</th>
-            <th>Units fed</th>
-            <th>Food eaten</th>
-            <th>Spent on stock</th>
-          </tr>
-        </thead>
-        <tbody id="monthlyBody"></tbody>
-      </table>
-    </div>
-    <p class="field-hint">Costs use the unit price at the time of each event. Older entries from before prices were recorded count as 0.</p>
-  </section>
-
-  <h2 class="monthly-title">All changes</h2>
-  <div id="emptyState" class="empty-state hidden">
-    <p class="empty-title">Nothing here yet.</p>
-    <p class="empty-sub">Add, use, or restock something and it'll show up here.</p>
+  <h1>History</h1>
+  <div class="head" style="margin-top:20px"><h2>Monthly summary</h2></div>
+  <p class="sub">Tap a month to filter the events below. Costs use each food's current price, so they are estimates.</p>
+  <div class="panel scroll">
+    <table><thead><tr><th>Month</th><th>Feedings</th><th>Units fed</th><th>Food eaten ≈</th><th>Purchased ≈</th></tr></thead><tbody id="monthRows"></tbody></table>
   </div>
-
-  <div class="history-table-wrap">
-    <table class="history-table" id="historyTable">
-      <thead>
-        <tr>
-          <th>When</th>
-          <th>Product</th>
-          <th>Brand</th>
-          <th>Cat</th>
-          <th>Change</th>
-          <th>Qty</th>
-          <th>Type</th>
-        </tr>
-      </thead>
-      <tbody id="historyTableBody"></tbody>
-    </table>
+  <div class="head">
+    <h2>Events</h2>
+    <div class="row"><label style="flex:0 1 180px"><select id="mFilter"></select></label>
+    <label style="flex:0 1 160px"><select id="sFilter"><option value="">All events</option><option value="feed">Fed</option><option value="create">Added</option><option value="edit">Edited</option><option value="adjust">Adjusted</option><option value="delete">Deleted</option></select></label></div>
+  </div>
+  <div class="panel scroll">
+    <table><thead><tr><th>When</th><th>Event</th><th>Food</th><th>Units</th><th>Stock</th></tr></thead><tbody id="logRows"></tbody></table>
   </div>
 </main>
-
-<script src="history.js"></script>
+<script src="/catify.js"></script>
 </body>
 </html>

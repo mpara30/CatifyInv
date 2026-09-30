@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CatifyInv – Pantry</title>
+<link rel="stylesheet" href="/catify.css">
+</head>
+<body data-page="pantry">
+<header>
+  <div><div class="eye" id="eye"></div><div class="brand">CatifyInv</div></div>
+  <nav><a data-p="home" href="/">Home</a><a data-p="pantry" href="/pantry">Pantry</a><a data-p="history" href="/history">History</a></nav>
+</header>
+<main>
+  <div class="head" style="margin-top:8px">
+    <div><h1>Pantry</h1><p class="sub" style="margin:0">Everything in stock, priced per unit.</p></div>
+    <div class="row"><button id="openRestock">Restock</button><button class="d" id="openAdd">+ Add food</button></div>
+  </div>
+  <div class="filters">
+    <input id="q" type="search" placeholder="Search name, brand, flavour…">
+    <select id="fc"></select><select id="fk"></select><select id="ff"></select>
+    <select id="fs"><option value="">All stock</option><option value="have">Stocked</option><option value="need">Need more</option><option value="out">Out</option></select>
+    <select id="so"><option value="name">Name A–Z</option><option value="stock">Stock low → high</option><option value="exp">Use by soonest</option><option value="price">Price low → high</option></select>
+  </div>
+  <div class="cards" id="cards"></div>
+</main>
+
+<dialog id="dFood">
+  <form id="foodForm"><h2 id="dfT">Add food</h2><p class="sub">Price is per unit (can, pouch or bag).</p>
+    <div class="row"><input type="hidden" id="nId">
+      <label style="flex-basis:100%">Name<input id="nName" required></label>
+      <label>Brand<input id="nBrand" required></label>
+      <label>Category<input id="nCat" list="catList" placeholder="wet"></label>
+      <datalist id="catList"><option>dry</option><option>wet</option><option>treats</option><option>freeze-dried</option><option>raw</option></datalist>
+      <label>Flavour<input id="nFlav"></label>
+      <label>Weight (g)<input id="nW" type="number" min="0"></label>
+      <label>Price / unit (lei)<input id="nPrice" type="number" min="0" step="0.01" required></label>
+      <label>Units per box<input id="nUpb" type="number" min="1" step="1" placeholder="single item"></label>
+      <label>Units in stock<input id="nUnits" type="number" min="0" step="1" value="0"></label>
+      <label>Use by<input id="nExp" type="date"></label>
+      <div style="flex-basis:100%"><div class="lbl">For cats (none ticked = all cats)</div><div class="checks" id="nCats"></div></div>
+    </div>
+    <div class="acts"><button type="button" data-close>Cancel</button><button class="d">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="dRestock">
+  <form id="restockForm"><h2>Restock</h2><p class="sub">Add what you just bought.</p>
+    <div class="row">
+      <label style="flex-basis:100%">Food<select id="rFood"></select></label>
+      <label>Quantity<input id="rQty" type="number" min="1" step="1" value="1" required></label>
+      <label>Counted in<select id="rUnit"><option value="u">units</option><option value="b">boxes</option></select></label>
+      <label>Price / unit paid<input id="rPrice" type="number" min="0" step="0.01" placeholder="unchanged"></label>
+      <label>New use by<input id="rExp" type="date"></label>
+    </div>
+    <div class="acts"><button type="button" data-close>Cancel</button><button class="d">Add stock</button></div>
+  </form>
+</dialog>
+
+<dialog id="dFeed">
+  <form id="feedDForm"><h2>Feed</h2>
+    <div class="row">
+      <label>Cat<select id="dCatS"></select></label>
+      <label>Food<select id="dFoodS"></select></label>
+      <label style="flex:0 1 90px">Units<input id="dQty" type="number" min="1" step="1" value="1"></label>
+    </div>
+    <div id="dMsg" class="sub" style="margin:10px 0 0"></div>
+    <div class="acts"><button type="button" data-close>Close</button><button class="d">Feed</button></div>
+  </form>
+</dialog>
+<script src="/catify.js"></script>
+</body>
+</html>
