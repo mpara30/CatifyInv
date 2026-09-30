@@ -12,7 +12,9 @@ Endpoints:
     DELETE /api/products/<id>       delete a product
     POST   /api/products/<id>/adjust-stock   bump stock_qty by a delta
     GET    /api/products/<id>/history        stock change history for a product
+    POST   /api/products/<id>/restock        add stock ({"boxes": 2} or {"units": 6}, optional "price", "expiration_date")
     GET    /api/stock-history                stock change history across all products
+    GET    /api/stock-history/monthly        per-month totals: units fed, food cost, restock spend
     GET    /api/cats                list cats
     POST   /api/cats                create a cat ({"name": "..."})
     DELETE /api/cats/<id>           delete a cat (also un-tags it from any products)
@@ -98,20 +100,21 @@ def validate_payload(data, partial=False):
 
 def log_stock_history(conn, product_id, product_name, product_brand,
                        previous_qty, new_qty, source, skip_if_unchanged=True,
-                       cat_id=None, cat_name=None):
+                       cat_id=None, cat_name=None, unit_price=None):
     """Insert a stock_history row, snapshotting the product's name/brand (and
-    the cat's name, if one was specified) so the row stays readable even
-    after the product or cat itself is deleted.
+    the cat's name, if one was specified, and the unit price at that moment)
+    so the row stays readable, and monthly costs stay accurate, even after
+    the product or cat is deleted or its price changes.
     By default, no-op edits (previous_qty == new_qty) aren't logged."""
     if skip_if_unchanged and previous_qty == new_qty:
         return
     conn.execute(
         "INSERT INTO stock_history "
         "(product_id, product_name, product_brand, cat_id, cat_name, "
-        "previous_qty, new_qty, delta, source) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "previous_qty, new_qty, delta, unit_price, source) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (product_id, product_name, product_brand, cat_id, cat_name,
-         previous_qty, new_qty, new_qty - previous_qty, source),
+         previous_qty, new_qty, new_qty - previous_qty, unit_price, source),
     )
 
 
@@ -399,6 +402,7 @@ def create_product():
         log_stock_history(
             conn, cur.lastrowid, data["name"], data["brand"],
             0, data["stock_qty"], "create", skip_if_unchanged=False,
+            unit_price=data["price"],
         )
         if cat_ids:
             try:
@@ -438,7 +442,7 @@ def update_product(product_id):
     conn = get_connection()
     try:
         existing = conn.execute(
-            "SELECT id, name, brand, stock_qty FROM products WHERE id = ?",  # nosec B608
+            "SELECT id, name, brand, price, stock_qty FROM products WHERE id = ?",  # nosec B608
             (product_id,),
         ).fetchone()
         if existing is None:
@@ -460,6 +464,7 @@ def update_product(product_id):
             log_stock_history(
                 conn, product_id, snap_name, snap_brand,
                 existing["stock_qty"], data["stock_qty"], "edit",
+                unit_price=data.get("price", existing["price"]),
             )
 
         if cat_ids is not None:
@@ -498,7 +503,7 @@ def adjust_stock(product_id):
     conn = get_connection()
     try:
         row = conn.execute(
-            "SELECT name, brand, stock_qty FROM products WHERE id = ?", (product_id,)
+            "SELECT name, brand, price, stock_qty FROM products WHERE id = ?", (product_id,)
         ).fetchone()
         if row is None:
             return jsonify(error="Not found"), 404
@@ -518,13 +523,113 @@ def adjust_stock(product_id):
         log_stock_history(
             conn, product_id, row["name"], row["brand"],
             row["stock_qty"], new_qty, "feed" if cat_id is not None else "adjust",
-            cat_id=cat_id, cat_name=cat_name,
+            cat_id=cat_id, cat_name=cat_name, unit_price=row["price"],
         )
         conn.commit()
         updated = conn.execute(
             f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)  # nosec B608
         ).fetchone()
         return jsonify(Product.from_row(updated).to_dict())
+    finally:
+        conn.close()
+
+
+@app.route("/api/products/<int:product_id>/restock", methods=["POST"])
+def restock(product_id):
+    """Add stock you just bought. Body: {"boxes": 2} (needs units_per_box on
+    the product) or {"units": 6}. Optional: "price" (bani per unit, updates
+    the product's price) and "expiration_date" (YYYY-MM-DD). Logged as a
+    'restock' event with the price paid, so monthly spend is accurate."""
+    data = request.get_json(silent=True) or {}
+    boxes, units = data.get("boxes"), data.get("units")
+    price, expiration = data.get("price"), data.get("expiration_date")
+
+    if (boxes is None) == (units is None):
+        return jsonify(error="Provide exactly one of boxes or units"), 400
+    for value in (boxes, units, price):
+        if value is not None and (not isinstance(value, int) or isinstance(value, bool)):
+            return jsonify(error="boxes, units and price must be integers"), 400
+    if (boxes if boxes is not None else units) < 1:
+        return jsonify(error="Quantity must be at least 1"), 400
+    if price is not None and price < 0:
+        return jsonify(error="price must be >= 0"), 400
+    if expiration is not None:
+        try:
+            datetime.strptime(expiration, "%Y-%m-%d")
+        except (TypeError, ValueError):
+            return jsonify(error="expiration_date must be YYYY-MM-DD"), 400
+
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT name, brand, price, units_per_box, stock_qty FROM products WHERE id = ?",
+            (product_id,),
+        ).fetchone()
+        if row is None:
+            return jsonify(error="Not found"), 404
+
+        if boxes is not None:
+            if not row["units_per_box"]:
+                return jsonify(error="Product has no units_per_box; send units instead"), 400
+            units = boxes * row["units_per_box"]
+
+        new_price = row["price"] if price is None else price
+        new_qty = row["stock_qty"] + units
+        conn.execute(
+            "UPDATE products SET stock_qty = ?, price = ?, "
+            "expiration_date = COALESCE(?, expiration_date), "
+            "updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (new_qty, new_price, expiration, product_id),
+        )
+        log_stock_history(
+            conn, product_id, row["name"], row["brand"],
+            row["stock_qty"], new_qty, "restock", unit_price=new_price,
+        )
+        conn.commit()
+        updated = conn.execute(
+            f"SELECT {COLUMNS} FROM products WHERE id = ?", (product_id,)  # nosec B608
+        ).fetchone()
+        return jsonify(Product.from_row(updated).to_dict())
+    finally:
+        conn.close()
+
+
+@app.route("/api/stock-history/monthly", methods=["GET"])
+def monthly_history():
+    """Per-month totals, most recent month first.
+
+    For each month: number of feedings and units fed, what that food cost
+    (units x the price at the time), and restock spend (restocks plus the
+    starting stock of newly created products). Money is in bani, with _ron
+    twins. Rows logged before unit_price existed count as 0 cost.
+
+    Optional filter: cat_id (only feedings for this cat; spend is then 0).
+    """
+    cat_id = request.args.get("cat_id", type=int)
+    sql = (
+        "SELECT strftime('%Y-%m', created_at) AS month, "
+        "SUM(CASE WHEN source = 'feed' THEN 1 ELSE 0 END) AS feedings, "
+        "SUM(CASE WHEN source = 'feed' THEN -delta ELSE 0 END) AS units_fed, "
+        "SUM(CASE WHEN source = 'feed' THEN -delta * COALESCE(unit_price, 0) ELSE 0 END) AS food_cost, "
+        "SUM(CASE WHEN source IN ('restock', 'create') AND delta > 0 "
+        "THEN delta * COALESCE(unit_price, 0) ELSE 0 END) AS spend "
+        "FROM stock_history"
+    )
+    params = []
+    if cat_id is not None:
+        sql += " WHERE source = 'feed' AND cat_id = ?"
+        params.append(cat_id)
+    sql += " GROUP BY month ORDER BY month DESC"
+
+    conn = get_connection()
+    try:
+        out = []
+        for r in conn.execute(sql, params).fetchall():
+            item = dict(r)
+            item["food_cost_ron"] = round(item["food_cost"] / 100, 2)
+            item["spend_ron"] = round(item["spend"] / 100, 2)
+            out.append(item)
+        return jsonify(out)
     finally:
         conn.close()
 
@@ -542,7 +647,7 @@ def all_stock_history():
 
     Optional filters:
         q          search by product name or brand
-        source     'create' | 'edit' | 'adjust' | 'delete' | 'feed'
+        source     'create' | 'edit' | 'adjust' | 'delete' | 'feed' | 'restock'
         cat_id     only 'feed' events logged for this cat
         limit      max rows to return (default 200)
     """
@@ -555,7 +660,7 @@ def all_stock_history():
         like = f"%{args['q']}%"
         params.extend([like, like])
 
-    if args.get("source") in ("create", "edit", "adjust", "delete", "feed"):
+    if args.get("source") in ("create", "edit", "adjust", "delete", "feed", "restock"):
         clauses.append("source = ?")
         params.append(args["source"])
 
@@ -574,7 +679,7 @@ def all_stock_history():
 
     sql = (
         "SELECT id, product_id, product_name, product_brand, cat_id, cat_name, "
-        "previous_qty, new_qty, delta, source, created_at FROM stock_history"
+        "previous_qty, new_qty, delta, unit_price, source, created_at FROM stock_history"
     )
     if clauses:
         sql += " WHERE " + " AND ".join(clauses)
@@ -616,7 +721,7 @@ def delete_product(product_id):
     conn = get_connection()
     try:
         existing = conn.execute(
-            "SELECT id, name, brand, stock_qty FROM products WHERE id = ?", (product_id,)
+            "SELECT id, name, brand, price, stock_qty FROM products WHERE id = ?", (product_id,)
         ).fetchone()
         if existing is None:
             return jsonify(error="Not found"), 404
@@ -624,6 +729,7 @@ def delete_product(product_id):
         log_stock_history(
             conn, product_id, existing["name"], existing["brand"],
             existing["stock_qty"], 0, "delete", skip_if_unchanged=False,
+            unit_price=existing["price"],
         )
         conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
         conn.commit()

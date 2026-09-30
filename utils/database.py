@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS stock_history (
     previous_qty        INTEGER NOT NULL,
     new_qty             INTEGER NOT NULL,
     delta               INTEGER NOT NULL,
-    source              TEXT NOT NULL CHECK (source IN ('create', 'edit', 'adjust', 'delete', 'feed')),
+    unit_price          INTEGER,                 -- product price per unit (bani) at the time of the event; NULL for rows logged before this column existed
+    source              TEXT NOT NULL CHECK (source IN ('create', 'edit', 'adjust', 'delete', 'feed', 'restock')),
     created_at          TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -111,13 +112,21 @@ def _migrate_stock_history(conn):
     if not _table_exists(conn, "stock_history"):
         return  # fresh install; CREATE TABLE IF NOT EXISTS above already made the current shape
 
-    needs_rebuild = "cat_id" not in _columns(conn, "stock_history")
+    table_sql = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='stock_history'"
+    ).fetchone()[0]
+    existing_columns = _columns(conn, "stock_history")
+    needs_rebuild = (
+        "cat_id" not in existing_columns
+        or "unit_price" not in existing_columns
+        or "'restock'" not in table_sql
+    )
     if not needs_rebuild:
         return
 
     preserved_columns = [
-        "id", "product_id", "product_name", "product_brand",
-        "previous_qty", "new_qty", "delta", "source", "created_at",
+        "id", "product_id", "product_name", "product_brand", "cat_id", "cat_name",
+        "previous_qty", "new_qty", "delta", "unit_price", "source", "created_at",
     ]
     old_columns = _columns(conn, "stock_history")
     copy_columns = [c for c in preserved_columns if c in old_columns]
