@@ -33,6 +33,31 @@
 </section>
 
 <main>
+  <section class="monthly">
+    <div class="monthly-head">
+      <h2 class="monthly-title">Month by month</h2>
+      <select id="monthlyCat" class="input select">
+        <option value="">All cats</option>
+      </select>
+    </div>
+    <div class="history-table-wrap">
+      <table class="history-table" id="monthlyTable">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Feedings</th>
+            <th>Units fed</th>
+            <th>Food eaten</th>
+            <th>Spent on stock</th>
+          </tr>
+        </thead>
+        <tbody id="monthlyBody"></tbody>
+      </table>
+    </div>
+    <p class="field-hint">Costs use the unit price at the time of each event. Older entries from before prices were recorded count as 0.</p>
+  </section>
+
+  <h2 class="monthly-title">All changes</h2>
   <div id="emptyState" class="empty-state hidden">
     <p class="empty-title">Nothing here yet.</p>
     <p class="empty-sub">Add, use, or restock something and it'll show up here.</p>

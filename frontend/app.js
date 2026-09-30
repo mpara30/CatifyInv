@@ -234,6 +234,7 @@ function renderProducts(items) {
       </div>
       <button class="btn btn-feed" data-action="feed" data-id="${p.id}" ${p.stock_qty === 0 ? "disabled" : ""}>🐾 Feed</button>
       <div class="card-actions">
+        <button class="btn btn-ghost" data-action="restock" data-id="${p.id}">Restock</button>
         <button class="btn btn-ghost" data-action="edit" data-id="${p.id}">Edit</button>
         <button class="btn btn-ghost" data-action="delete" data-id="${p.id}">Delete</button>
       </div>
@@ -276,6 +277,8 @@ grid.addEventListener("click", async (e) => {
     openEditModal(id);
   } else if (action === "delete") {
     openDeleteModal(id);
+  } else if (action === "restock") {
+    openRestockModal(id);
   } else if (action === "feed") {
     const product = products.find((x) => x.id === id);
     handleFeedClick(product, btn);
@@ -691,6 +694,57 @@ catsList.addEventListener("click", async (e) => {
     await loadProducts();
   } catch (err) {
     showToast(err.message);
+  }
+});
+
+// ---------- Restock ----------
+const restockBackdrop = document.getElementById("restockBackdrop");
+const restockForm = document.getElementById("restockForm");
+const restockError = document.getElementById("restockError");
+let restockProductId = null;
+
+function openRestockModal(id) {
+  const p = products.find((x) => x.id === id);
+  if (!p) return;
+  restockProductId = id;
+  document.getElementById("restockTitle").textContent = `Restock ${p.name}`;
+  restockForm.reset();
+  document.getElementById("rBoxesOption").hidden = !p.units_per_box;
+  document.getElementById("rBoxesOption").disabled = !p.units_per_box;
+  document.getElementById("rPrice").placeholder = `${p.price_ron.toFixed(2)} (current)`;
+  restockError.classList.add("hidden");
+  restockBackdrop.classList.remove("hidden");
+  document.getElementById("rQty").focus();
+}
+
+function closeRestockModal() {
+  restockBackdrop.classList.add("hidden");
+}
+
+document.getElementById("closeRestockBtn").addEventListener("click", closeRestockModal);
+document.getElementById("cancelRestockBtn").addEventListener("click", closeRestockModal);
+restockBackdrop.addEventListener("click", (e) => {
+  if (e.target === restockBackdrop) closeRestockModal();
+});
+
+restockForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  restockError.classList.add("hidden");
+  const qty = parseInt(document.getElementById("rQty").value, 10);
+  const body = { [document.getElementById("rMode").value]: qty };
+  const priceRaw = document.getElementById("rPrice").value.trim();
+  if (priceRaw !== "") body.price = Math.round(parseFloat(priceRaw) * 100);
+  const exp = document.getElementById("rExp").value;
+  if (exp) body.expiration_date = exp;
+
+  try {
+    const updated = await apiSend(`/products/${restockProductId}/restock`, "POST", body);
+    closeRestockModal();
+    showToast(`Restocked — now ${updated.stock_qty} in stock`);
+    await loadAll();
+  } catch (err) {
+    restockError.textContent = err.message;
+    restockError.classList.remove("hidden");
   }
 });
 

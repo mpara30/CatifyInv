@@ -44,6 +44,7 @@ const SOURCE_LABELS = {
   adjust: "Quick +/-",
   delete: "Removed",
   feed: "Fed",
+  restock: "Restocked",
 };
 
 function renderTable(entries) {
@@ -74,7 +75,47 @@ function renderTable(entries) {
     .join("");
 }
 
+// ---------- Monthly summary ----------
+const monthlyCat = document.getElementById("monthlyCat");
+const monthlyBody = document.getElementById("monthlyBody");
+
+function formatMonth(ym) {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
+async function loadMonthly() {
+  const params = monthlyCat.value ? `?cat_id=${monthlyCat.value}` : "";
+  const res = await fetch(`${API}/stock-history/monthly${params}`);
+  const rows = await res.json();
+  monthlyBody.innerHTML = rows.length
+    ? rows.map((r) => `
+        <tr>
+          <td class="cell-product">${formatMonth(r.month)}</td>
+          <td>${r.feedings}</td>
+          <td>${r.units_fed}</td>
+          <td>${r.food_cost_ron.toFixed(2)} lei</td>
+          <td>${monthlyCat.value ? "—" : `${r.spend_ron.toFixed(2)} lei`}</td>
+        </tr>`).join("")
+    : `<tr><td colspan="5" class="history-empty">Nothing recorded yet.</td></tr>`;
+}
+
+async function loadMonthlyCats() {
+  const res = await fetch(`${API}/cats`);
+  const cats = await res.json();
+  cats.forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.name;
+    monthlyCat.appendChild(opt);
+  });
+}
+
+monthlyCat.addEventListener("change", loadMonthly);
+
 searchInput.addEventListener("input", debounce(loadHistory, 250));
 sourceFilter.addEventListener("change", loadHistory);
 
 loadHistory();
+loadMonthlyCats();
+loadMonthly();

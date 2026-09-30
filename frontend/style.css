@@ -695,6 +695,7 @@ main { padding: 24px 32px 60px; }
 .source-pill.create { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 .source-pill.delete { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
 .source-pill.feed { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.source-pill.restock { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 
 @media (max-width: 640px) {
   .history-table { font-size: 12.5px; }
@@ -734,3 +735,9 @@ main { padding: 24px 32px 60px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+/* ---------- Monthly summary (history page) ---------- */
+.monthly { margin-bottom: 32px; }
+.monthly-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.monthly-title { font-family: var(--font-display, inherit); font-size: 18px; margin: 0 0 12px; }
+.monthly-head .monthly-title { margin: 0; }
+.monthly .history-table-wrap { margin-top: 12px; }
